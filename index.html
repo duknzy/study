@@ -6,6 +6,8 @@
     <title>長崎大学・24hフルアップデート計画 (True Clock Telemetry)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- ★常時文字表示用のプラグインを追加 -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
     
     <script>
@@ -29,7 +31,7 @@
     
     <style>
         body { background-color: #fcfbf9; color: #334155; -webkit-font-smoothing: antialiased; }
-        .chart-container { position: relative; width: 100%; max-width: 650px; margin: 0 auto; height: 42vh; max-height: 420px; }
+        .chart-container { position: relative; width: 100%; max-width: 500px; margin: 0 auto; height: 45vh; max-height: 450px; }
         .task-done { text-decoration: line-through; opacity: 0.4; background-color: #f1f5f9 !important; border-color: #cbd5e1 !important; }
         .hidden-screen { display: none !important; }
         .tab-active { border-color: #3b82f6; color: #3b82f6; font-weight: 900; }
@@ -43,7 +45,7 @@
 <div id="auth-screen" class="min-h-screen flex items-center justify-center px-4">
     <div class="bg-white p-8 rounded-2xl border border-borderLight shadow-sm max-w-md w-full text-center space-y-6">
         <div>
-            <h1 class="text-2xl font-black text-textMain tracking-tight">🏁 24h 真・時計テレメトリー v4.0</h1>
+            <h1 class="text-2xl font-black text-textMain tracking-tight">🏁 24h 真・時計テレメトリー v4.1</h1>
             <p class="text-sm text-textSub mt-1">長崎大学 フルアップデート計画</p>
         </div>
         <p class="text-xs text-textSub leading-relaxed">一日の全リソースを24時間時計の文字盤として完全同期・可視化します。</p>
@@ -117,10 +119,11 @@
             <!-- 24HOUR RESOUCE PIE CHART -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="col-span-1 lg:col-span-2 bg-white rounded-2xl p-6 border border-borderLight shadow-sm">
-                    <div class="flex justify-between items-center mb-2">
+                    <div class="flex justify-between items-center mb-4">
                         <h3 class="text-sm font-bold text-textMain" id="chartTitle">本日の24時間リソース配分</h3>
-                        <span class="text-xs text-textSub font-bold text-accentBlue bg-blue-50 px-2 py-0.5 rounded">00:00位置から時計回り表示</span>
+                        <span class="text-xs font-bold text-accentBlue bg-blue-50 px-2.5 py-1 rounded-lg">⏱️ 真上(12時位置)＝00:00固定</span>
                     </div>
+                    <!-- 右の凡例を消したためグラフを最大化配置 -->
                     <div class="chart-container"><canvas id="burndownChart"></canvas></div>
                 </div>
                 
@@ -324,14 +327,14 @@
     let macroPlanData = {};
 
     const subjectMeta = {
-        sleep: { name: '😴 睡眠', color: '#64748b', bg: 'bg-slate-100', border: 'border-slate-200', text: 'text-slate-500' },
-        life: { name: '🛀 生活・ピット', color: '#94a3b8', bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-400' },
-        school: { name: '🏫 学校・移動', color: '#cbd5e1', bg: 'bg-zinc-50', border: 'border-zinc-200', text: 'text-zinc-400' },
-        math: { name: '📘 数学', color: '#3b82f6', bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-accentBlue' },
-        physics: { name: '📙 物理', color: '#f97316', bg: 'bg-orange-50', border: 'border-orange-100', text: 'text-accentOrange' },
-        chem: { name: '📗 化学', color: '#22c55e', bg: 'bg-green-50', border: 'border-green-100', text: 'text-green-600' },
-        eng: { name: '🍇 英語', color: '#a855f7', bg: 'bg-purple-50', border: 'border-purple-100', text: 'text-purple-600' },
-        info: { name: '☕ 自由枠・その他', color: '#f43f5e', bg: 'bg-rose-50', border: 'border-rose-100', text: 'text-rose-500' }
+        sleep: { name: '睡眠', color: '#64748b', bg: 'bg-slate-100', border: 'border-slate-200', text: 'text-slate-500' },
+        life: { name: '生活・ピット', color: '#94a3b8', bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-400' },
+        school: { name: '学校・移動', color: '#cbd5e1', bg: 'bg-zinc-50', border: 'border-zinc-200', text: 'text-zinc-400' },
+        math: { name: '数学', color: '#3b82f6', bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-accentBlue' },
+        physics: { name: '物理', color: '#f97316', bg: 'bg-orange-50', border: 'border-orange-100', text: 'text-accentOrange' },
+        chem: { name: '化学', color: '#22c55e', bg: 'bg-green-50', border: 'border-green-100', text: 'text-green-600' },
+        eng: { name: '英語', color: '#a855f7', bg: 'bg-purple-50', border: 'border-purple-100', text: 'text-purple-600' },
+        info: { name: '自由・その他', color: '#f43f5e', bg: 'bg-rose-50', border: 'border-rose-100', text: 'text-rose-500' }
     };
 
     const defaultMacroPlan = {
@@ -341,8 +344,8 @@
         startDate: "2026-07-21",
         endDate: "2026-08-17",
         templates: {
-            phase1: { sleep: 450, life: 130, school: 540, math: 120, physics: 90, chem: 80, eng: 0, info: 30 }, // 睡眠+生活+学校+勉強で計1440分[cite: 2]
-            phase2: { sleep: 450, life: 180, school: 0, math: 180, physics: 180, chem: 180, eng: 60, info: 210 }
+            phase1: { sleep: 420, life: 90, school: 600, math: 120, physics: 90, chem: 90, eng: 0, info: 30 }, // 睡眠420分[cite: 2], 生活90分
+            phase2: { sleep: 420, life: 90, school: 0, math: 180, physics: 180, chem: 180, eng: 60, info: 210 } // 睡眠420分[cite: 2], 生活90分, 勉強12h[cite: 2]
         },
         milestones: [
             { id: 1, date: "2026-07-31", title: "Checkpoint 1", content: "数学:数III微分突入/ベクトル完了 | 物理:力学全範囲基本完了 | 化学:理論完了(酸・塩基・酸化還元まで)", done: false },
@@ -613,7 +616,7 @@
         }
     };
 
-    // ★CORE UPGRADE★ 真の24時間時計盤グラフィック演算ロジック[cite: 1]
+    // ★ALGORITHM TUNING★ 真の24時間時計盤グラフィック演算＆常時テキスト描画対応
     function update24hChartAndStats(tasks) {
         let totalStudyPlanned = 0, totalStudyCompleted = 0;
         
@@ -631,7 +634,6 @@
         document.getElementById('progressPercentage').innerText = `${progressPercent}%`;
         document.getElementById('progressBar').style.width = `${progressPercent}%`;
 
-        // 24時間を時系列順に穴埋めするシミュレーター
         const sortedTasks = [...tasks].sort((a, b) => a.time.localeCompare(b.time));
         const chartBlocks = [];
         let currentTimelineMinute = 0;
@@ -640,13 +642,14 @@
             const [h, m] = t.time.split(':').map(Number);
             const taskStartMinute = h * 60 + m;
             
-            // 予定が登録されていない「空白の時間帯」を自動計算して埋める
+            // 空白を「自由枠」として自動穴埋め
             if (taskStartMinute > currentTimelineMinute) {
                 const gapDuration = taskStartMinute - currentTimelineMinute;
                 chartBlocks.push({
-                    label: `${minutesToTimeStr(currentTimelineMinute)}〜${minutesToTimeStr(taskStartMinute)} 未管理リソース`,
+                    label: `${minutesToTimeStr(currentTimelineMinute)}〜${minutesToTimeStr(taskStartMinute)} 自由枠`,
                     duration: gapDuration,
-                    color: '#f1f5f9' // スッキリした超薄グレー
+                    color: '#f1f5f9',
+                    isStudy: false
                 });
             }
             
@@ -656,20 +659,19 @@
             let color = t.done ? '#cbd5e1' : meta.color; // 消化済みはグレーアウト[cite: 1]
             label += t.done ? `[✓] ${meta.name}` : meta.name;
 
-            chartBlocks.push({ label, duration: t.duration, color });
+            chartBlocks.push({ label, duration: t.duration, color, isStudy: ['math','physics','chem','eng'].includes(t.subject) });
             currentTimelineMinute = taskStartMinute + t.duration;
         });
 
-        // 23:00以降〜深夜24:00(1440分)までの残りの隙間も自動補填
         if (currentTimelineMinute < 1440) {
             chartBlocks.push({
-                label: `${minutesToTimeStr(currentTimelineMinute)}〜24:00 未管理リソース`,
+                label: `${minutesToTimeStr(currentTimelineMinute)}〜24:00 自由枠`,
                 duration: 1440 - currentTimelineMinute,
-                color: '#f1f5f9'
+                color: '#f1f5f9',
+                isStudy: false
             });
         }
 
-        // データをChart.jsにマッピング
         const labels = chartBlocks.map(b => b.label);
         const dataValues = chartBlocks.map(b => b.duration);
         const backgroundColors = chartBlocks.map(b => b.color);
@@ -690,7 +692,6 @@
         }
     }
 
-    // ★UPGRADE★ 00:00から24:00まで隙間なく敷き詰めるテンプレートデータ[cite: 2]
     window.apply24hTemplate = async (type) => {
         if (!confirm('24時間スケジュール枠を再展開しますか？（既存データはクリアされます）')) return;
         const config = macroPlanData.templates[type];
@@ -773,24 +774,55 @@
         });
     }
 
+    // ★CHART ENGINE OVERHAUL★ 真の12時位置(00:00)開始、凡例スペース抹殺、常時テキスト展開
     function initChart() {
         const ctx = document.getElementById('burndownChart').getContext('2d');
         if (burndownChart) burndownChart.destroy();
+        
         burndownChart = new Chart(ctx, {
             type: 'doughnut',
-            data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderWidth: 0, hoverOffset: 4 }] },
+            plugins: [ChartDataLabels], // プラグインをガチで有効化
+            data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderWidth: 1, borderColor: '#ffffff' }] },
             options: {
-                responsive: true, mainAspectRatio: false, cutout: '72%',
-                rotation: -90, // 夜中の00:00を頂点（開始位置）にする固定セッティング[cite: 1]
+                responsive: true, 
+                maintainAspectRatio: false, 
+                cutout: '62%', // 文字を配置しやすくするためにドーナツの線を少し太く
+                // ★修正：Chart.jsの仕様に合わせた「真上（12時方向）から右回りスタート」の絶対補正
+                rotation: 0, 
                 plugins: { 
                     legend: { 
-                        position: 'right', 
-                        labels: { 
-                            font: { family: "'Noto Sans JP', sans-serif", size: 10, weight: 'bold' }, 
-                            color: '#475569', 
-                            padding: 8 
-                        } 
-                    } 
+                        display: false // 右側の凡例スペースを完全抹殺（これでグラフが中央にドカンと最大化します）
+                    },
+                    tooltip: {
+                        enabled: true // ホバー時のポップアップも補助として残す
+                    },
+                    // ★常時表示データラベルの細かな文字潰れ防止ロジック
+                    datalabels: {
+                        color: (context) => {
+                            const bg = context.dataset.backgroundColor[context.dataIndex];
+                            // 背景が白系・薄グレーの場合は暗い文字、色付きエリアは白文字にして視認性を確保
+                            return (bg === '#f1f5f9' || bg === '#cbd5e1' || bg === '#e2e8f0') ? '#475569' : '#ffffff';
+                        },
+                        font: {
+                            family: "'Noto Sans JP', sans-serif",
+                            size: 10,
+                            weight: 'bold'
+                        },
+                        textAlign: 'center',
+                        formatter: (value, context) => {
+                            // 20分未満の極小エリアは文字が重なるため非表示
+                            if (value < 20) return '';
+                            const label = context.chart.data.labels[context.dataIndex];
+                            
+                            // 50分未満の狭いエリアは「時間帯（例: 06:30〜07:00）」だけを表示してスマートに
+                            if (value < 50) {
+                                return label.split(' ')[0];
+                            }
+                            
+                            // 1時間以上の広いエリアは「時間帯」と「中身」を2行に改行してバシッと表示
+                            return label.replace(' ', '\n');
+                        }
+                    }
                 }
             }
         });
