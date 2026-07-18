@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>長崎大学・夏季フルアップデート計画 (Firebase Cloud)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Noto Sans JP', 'sans-serif'] },
+                    colors: {
+                        baseBg: '#fcfbf9',
+                        cardBg: '#f5f3ee',
+                        accentBlue: '#3b82f6',
+                        accentOrange: '#f97316',
+                        textMain: '#334155',
+                        textSub: '#64748b',
+                        borderLight: '#e2e8f0'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body { background-color: #fcfbf9; color: #334155; -webkit-font-smoothing: antialiased; }
+        .chart-container { position: relative; width: 100%; max-width: 600px; margin: 0 auto; height: 35vh; max-height: 350px; }
+        .interactive-card { transition: all 0.2s ease-in-out; }
+        .interactive-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); }
+        .task-done { text-decoration: line-through; opacity: 0.4; background-color: #f1f5f9 !important; border-color: #cbd5e1 !important; }
+        .hidden-screen { display: none !important; }
+    </style>
+</head>
+<body class="bg-baseBg min-h-screen">
+
+<!-- ========================================== -->
+<!-- 1. AUTH SCREEN (ログイン・新規登録画面) -->
+<!-- ========================================== -->
+<div id="auth-screen" class="min-h-screen flex items-center justify-center px-4">
+    <div class="bg-white p-8 rounded-2xl border border-borderLight shadow-sm max-w-md w-full space-y-6">
+        <div class="text-center">
+            <h1 class="text-2xl font-black text-textMain tracking-tight">🏁 学習テレメトリーシステム</h1>
+            <p class="text-sm text-textSub mt-1">長崎大学 フルアップデート計画</p>
+        </div>
+
+        <!-- Toggle Tabs -->
+        <div class="flex border-b border-borderLight text-sm font-bold">
+            <button id="tab-login" onclick="toggleAuthMode('login')" class="w-1/2 pb-2 text-accentBlue border-b-2 border-accentBlue">ログイン</button>
+            <button id="tab-signup" onclick="toggleAuthMode('signup')" class="w-1/2 pb-2 text-textSub">新規登録</button>
+        </div>
+
+        <!-- Forms -->
+        <div class="space-y-4">
+            <!-- 新規登録時のみ表示するフィールド -->
+            <div id="signup-fields" class="hidden space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-textSub uppercase mb-1">ドライバーネーム</label>
+                    <input type="text" id="auth-name" placeholder="例: ひろ" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-textSub uppercase mb-1">ターゲット（志望校・学部）</label>
+                    <input type="text" id="auth-target" placeholder="例: 情報データ科学部 / 工学部 a方式" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-textSub uppercase mb-1">メールアドレス</label>
+                <input type="email" id="auth-email" placeholder="driver@example.com" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-textSub uppercase mb-1">パスワード</label>
+                <input type="password" id="auth-password" placeholder="••••••••" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
+            </div>
+
+            <button id="btn-auth-submit" onclick="handleAuthSubmit()" class="w-full bg-textMain text-white font-bold py-2.5 rounded-xl text-sm hover:bg-slate-800 transition-colors">
+                ログイン実行
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- 2. MAIN DASHBOARD (メイン画面) -->
+<!-- ========================================== -->
+<div id="main-dashboard" class="hidden-screen">
+    <header class="bg-white border-b border-borderLight sticky top-0 z-50 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-black text-textMain tracking-tight">🏁 長崎大学 フルアップデート計画</h1>
+                <p class="text-sm text-textSub mt-1" id="userTargetDisplay">Target: ロード中...</p>
+            </div>
+            <div class="mt-4 sm:mt-0 flex items-center space-x-4">
+                <div class="text-right">
+                    <span class="block text-xs text-textSub font-bold uppercase tracking-wider">Driver</span>
+                    <span class="block text-lg font-bold text-accentBlue" id="userNameDisplay">ロード中...</span>
+                </div>
+                <button onclick="handleLogout()" class="text-xs bg-cardBg text-textSub hover:bg-red-50 hover:text-red-500 px-3 py-1.5 rounded-lg border border-borderLight font-medium transition-colors">
+                    ログアウト
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+        
+        <!-- DASHBOARD OVERVIEW -->
+        <section id="overview">
+            <div class="mb-4">
+                <h2 class="text-xl font-bold text-textMain">📊 本日の残り勉強時間（バーンダウン）</h2>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="col-span-1 lg:col-span-2 bg-white rounded-2xl p-6 border border-borderLight shadow-sm">
+                    <h3 class="text-md font-bold text-textSub mb-4 text-center" id="chartTitle">本日のリソース配分</h3>
+                    <div class="chart-container">
+                        <canvas id="burndownChart"></canvas>
+                    </div>
+                </div>
+                <div class="col-span-1 flex flex-col gap-4">
+                    <div class="bg-cardBg rounded-2xl p-6 border border-borderLight">
+                        <span class="text-xs font-bold text-textSub uppercase">Remaining Time</span>
+                        <div class="text-4xl font-black text-textMain mt-1" id="totalRemainingText">0<span class="text-lg font-bold text-textSub ml-1">Hours</span></div>
+                    </div>
+                    <div class="bg-cardBg rounded-2xl p-6 border border-borderLight">
+                        <span class="text-xs font-bold text-textSub uppercase">Today's Progress</span>
+                        <div class="text-3xl font-black text-accentBlue mt-1" id="progressPercentage">0%</div>
+                        <div class="mt-2 w-full bg-gray-200 rounded-full h-2">
+                            <div id="progressBar" class="bg-accentBlue h-2 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PLANNER & TELEMETRY -->
+        <section id="telemetry">
+            <div class="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-textMain">⏱️ Daily Telemetry</h2>
+                    <p class="text-sm text-textSub">日付を選択して計画をセット・消化します。</p>
+                </div>
+                <!-- Date Selector -->
+                <div class="flex items-center gap-2">
+                    <label class="text-sm font-bold text-textSub">表示日:</label>
+                    <input type="date" id="currentDateInput" onchange="loadDateData()" class="px-3 py-2 rounded-xl border border-borderLight bg-white font-bold text-sm text-textMain">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                <!-- Left: Forms & Templates -->
+                <div class="space-y-4 col-span-1">
+                    <!-- Template Apply -->
+                    <div class="bg-white p-5 rounded-2xl border border-borderLight shadow-sm space-y-3">
+                        <h4 class="text-sm font-bold text-textMain">📋 ルーティン・テンプレートを適用</h4>
+                        <p class="text-xs text-textSub">選択中の日付に標準の予定セットを一括展開します（既存データは上書きされます）。</p>
+                        <div class="grid grid-cols-2 gap-2 pt-1">
+                            <button onclick="applyTemplate('phase1')" class="px-3 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-accentBlue rounded-xl font-bold text-xs transition-colors">フェーズ1 (学校)</button>
+                            <button onclick="applyTemplate('phase2')" class="px-3 py-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-accentOrange rounded-xl font-bold text-xs transition-colors">フェーズ2 (完全休日)</button>
+                        </div>
+                    </div>
+
+                    <!-- Task Form -->
+                    <div class="bg-white p-5 rounded-2xl border border-borderLight shadow-sm space-y-4">
+                        <h4 class="text-sm font-bold text-textMain">🛠️ 個別計画の追加</h4>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-bold text-textSub mb-1">開始時間</label>
+                                <input type="text" id="inputTime" placeholder="例: 17:30" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-textSub mb-1">想定時間 (分)</label>
+                                <input type="number" id="inputDuration" placeholder="例: 90" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-textSub mb-1">対象セクター (科目)</label>
+                                <select id="inputSubject" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
+                                    <option value="math">数学</option>
+                                    <option value="physics">物理</option>
+                                    <option value="chem">化学</option>
+                                    <option value="eng">英語</option>
+                                    <option value="info">その他/情報</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-textSub mb-1">タスク詳細</label>
+                                <input type="text" id="inputTask" placeholder="例: セミナー力学基本問題" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
+                            </div>
+                            <button onclick="addTask()" class="w-full bg-textMain text-white font-bold py-2 rounded-xl text-sm hover:bg-slate-800 transition-colors">
+                                計画を登録
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Dynamic Timeline -->
+                <div class="col-span-1 lg:col-span-2 bg-white rounded-2xl border border-borderLight p-6 shadow-sm min-h-[300px]">
+                    <h3 class="text-md font-bold text-textMain mb-4 border-b pb-2">📋 本日のタイムライン・指示書</h3>
+                    <div id="timelineContainer" class="space-y-4">
+                        <!-- JSで動的にタスクを生成 -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SOCIAL PADOCK -->
+        <section id="padock" class="bg-white rounded-2xl border border-borderLight p-6 shadow-sm">
+            <div class="mb-4">
+                <h2 class="text-xl font-bold text-textMain flex items-center gap-2">🏁 Paddock (ライバル・仲間の進捗)</h2>
+                <p class="text-sm text-textSub mt-1">同じアプリを使う他のドライバーの「今日の消化率」がリアルタイムに共有されます。</p>
+            </div>
+            <div id="paddockContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <!-- 他のユーザーの進捗カードが動的に挿入されます -->
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- ========================================== -->
+<!-- 3. FIREBASE INTEGRATION SCRIPT -->
+<!-- ========================================== -->
+<script type="module">
+    // Firebase SDKのインポート (CDN経由・v10モジュール版)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // -------------------------------------------------------------
+    // 【重要】ご自身のFirebaseプロジェクトのWebアプリ設定値に書き換えてください
+    // -------------------------------------------------------------
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyDam0BRv-0636AFeXaHV3HQW6Dq2nGX8fs",
+  authDomain: "kanri-d8a6c.firebaseapp.com",
+  projectId: "kanri-d8a6c",
+  storageBucket: "kanri-d8a6c.firebasestorage.app",
+  messagingSenderId: "109550426134",
+  appId: "1:109550426134:web:b23dbcb349e1e6ea4a7d37",
+  measurementId: "G-JJWDFKG1HD"
+};
+
+    // Firebaseの初期化
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // アプリのグローバル状態管理変数
+    let currentUser = null;
+    let authMode = 'login';
+    let currentSelectedDate = '2026-07-21'; // デフォルト日付設定
+    let burndownChart = null;
+    let currentDayTasks = [];
+
+    const subjectMeta = {
+        math: { name: '数学', color: '#3b82f6', bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-accentBlue' },
+        physics: { name: '物理', color: '#f97316', bg: 'bg-orange-50', border: 'border-orange-100', text: 'text-accentOrange' },
+        chem: { name: '化学', color: '#22c55e', bg: 'bg-green-50', border: 'border-green-100', text: 'text-green-600' },
+        eng: { name: '英語', color: '#a855f7', bg: 'bg-purple-50', border: 'border-purple-100', text: 'text-purple-600' },
+        info: { name: 'その他/情報', color: '#64748b', bg: 'bg-slate-50', border: 'border-slate-100', text: 'text-textSub' }
+    };
+
+    // -------------------------------------------------------------
+    // 認証監視 (Auth State Observer)
+    // -------------------------------------------------------------
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            currentUser = user;
+            document.getElementById('auth-screen').classList.add('hidden-screen');
+            document.getElementById('main-dashboard').classList.remove('hidden-screen');
+            
+            // カレンダーの初期値セット
+            document.getElementById('currentDateInput').value = currentSelectedDate;
+
+            // ユーザープロフィール取得
+            const userDoc = await getDoc(doc(db, "users", user.uid));
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                document.getElementById('userNameDisplay').innerText = userData.name || 'No Name';
+                document.getElementById('userTargetDisplay').innerText = `Target: ${userData.target || '未設定'}`;
+            }
+
+            initChart();
+            loadDateData();
+            listenToPaddock(); // パドック共有のリアルタイムリッスン開始
+        } else {
+            currentUser = null;
+            document.getElementById('auth-screen').classList.remove('hidden-screen');
+            document.getElementById('main-dashboard').classList.add('hidden-screen');
+        }
+    });
+
+    // -------------------------------------------------------------
+    // 認証ロジック (Authentication Actions)
+    // -------------------------------------------------------------
+    window.toggleAuthMode = (mode) => {
+        authMode = mode;
+        const signupFields = document.getElementById('signup-fields');
+        const tabLogin = document.getElementById('tab-login');
+        const tabSignup = document.getElementById('tab-signup');
+        const btnSubmit = document.getElementById('btn-auth-submit');
+
+        if (mode === 'signup') {
+            signupFields.classList.remove('hidden');
+            tabSignup.className = "w-1/2 pb-2 text-accentBlue border-b-2 border-accentBlue";
+            tabLogin.className = "w-1/2 pb-2 text-textSub";
+            btnSubmit.innerText = "新規アカウント作成";
+        } else {
+            signupFields.classList.add('hidden');
+            tabLogin.className = "w-1/2 pb-2 text-accentBlue border-b-2 border-accentBlue";
+            tabSignup.className = "w-1/2 pb-2 text-textSub";
+            btnSubmit.innerText = "ログイン実行";
+        }
+    };
+
+    window.handleAuthSubmit = async () => {
+        const email = document.getElementById('auth-email').value.trim();
+        const password = document.getElementById('auth-password').value;
+        
+        if(!email || !password) return alert('メールアドレスとパスワードを入力してください。');
+
+        try {
+            if (authMode === 'signup') {
+                const name = document.getElementById('auth-name').value.trim();
+                const target = document.getElementById('auth-target').value.trim();
+                if(!name) return alert('ドライバーネームを入力してください。');
+
+                // アカウント作成
+                const credential = await createUserWithEmailAndPassword(auth, email, password);
+                // ユーザープロフィールの初期設定
+                await setDoc(doc(db, "users", credential.user.uid), { name, target });
+            } else {
+                // ログイン
+                await signInWithEmailAndPassword(auth, email, password);
+            }
+        } catch (error) {
+            alert(`エラー: ${error.message}`);
+        }
+    };
+
+    window.handleLogout = () => {
+        if(confirm('ログアウトしますか？')) signOut(auth);
+    };
+
+    // -------------------------------------------------------------
+    // データ通信・表示ロジック (Firestore & UI Actions)
+    // -------------------------------------------------------------
+    
+    // 特定日の計画データをロード
+    window.loadDateData = async () => {
+        currentSelectedDate = document.getElementById('currentDateInput').value;
+        if (!currentUser) return;
+
+        const planDocRef = doc(db, `users/${currentUser.uid}/dailyPlans/${currentSelectedDate}`);
+        const planDoc = await getDoc(planDocRef);
+
+        if (planDoc.exists()) {
+            currentDayTasks = planDoc.data().tasks || [];
+        } else {
+            currentDayTasks = [];
+        }
+        renderTimeline();
+    };
+
+    // タイムライン描画 ＆ 統計計算
+    function renderTimeline() {
+        const container = document.getElementById('timelineContainer');
+        container.innerHTML = '';
+
+        if (currentDayTasks.length === 0) {
+            container.innerHTML = `<div class="text-center py-12 text-sm text-textSub">この日の計画はまだ白紙です。左側から予定を追加するか、テンプレートを適用してください。</div>`;
+            updateChartAndStats(0, 0, {});
+            return;
+        }
+
+        // 時間順でソート
+        currentDayTasks.sort((a, b) => a.time.localeCompare(b.time));
+
+        let totalMinutes = 0;
+        let completedMinutes = 0;
+        let subjectSummary = { math: 0, physics: 0, chem: 0, eng: 0, info: 0 };
+
+        currentDayTasks.forEach(task => {
+            totalMinutes += task.duration;
+            if (task.done) {
+                completedMinutes += task.duration;
+            } else {
+                // 残り時間グラフ用には「未完了」の分数のみ集計
+                subjectSummary[task.subject] += task.duration;
+            }
+
+            const meta = subjectMeta[task.subject];
+            const isChecked = task.done ? 'checked' : '';
+            const doneClass = task.done ? 'task-done' : '';
+
+            const block = document.createElement('div');
+            block.className = `flex gap-4 items-start p-4 border rounded-xl transition-all bg-white border-borderLight shadow-xs ${doneClass}`;
+            block.innerHTML = `
+                <div class="w-16 text-right shrink-0 mt-0.5">
+                    <span class="text-sm font-black text-textMain block">${task.time}</span>
+                    <span class="text-xs text-textSub block font-bold">${task.duration}分</span>
+                </div>
+                <div class="flex-grow">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${meta.bg} ${meta.text}">${meta.name}</span>
+                        <button onclick="deleteTask(${task.id})" class="text-xs text-gray-300 hover:text-red-500 transition-colors font-medium">削除</button>
+                    </div>
+                    <p class="text-sm text-textMain mt-1.5 font-medium leading-relaxed">${task.task}</p>
+                </div>
+                <div class="flex items-center h-full my-auto pl-2">
+                    <input type="checkbox" ${isChecked} onclick="toggleTask(${task.id})" class="w-5 h-5 rounded text-accentBlue focus:ring-accentBlue border-gray-300 cursor-pointer transition-transform scale-110">
+                </div>
+            `;
+            container.appendChild(block);
+        });
+
+        updateChartAndStats(totalMinutes, completedMinutes, subjectSummary);
+    }
+
+    // ダッシュボードスタッツ更新 ＆ パドック用公開データの更新
+    async function updateChartAndStats(total, completed, summary) {
+        const remaining = total - completed;
+        
+        // 残り時間表示テキストの更新
+        const rHours = Math.floor(remaining / 60);
+        const rMins = remaining % 60;
+        document.getElementById('totalRemainingText').innerHTML = `${rHours}<span class="text-lg font-bold text-textSub ml-1">h ${rMins}m</span>`;
+
+        // プログレスバーの更新
+        const progressPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
+        document.getElementById('progressPercentage').innerText = `${progressPercent}%`;
+        document.getElementById('progressBar').style.width = `${progressPercent}%`;
+        document.getElementById('chartTitle').innerText = `${currentSelectedDate} の残り勉強リソース`;
+
+        // ドーナツグラフのデータ再構築
+        const labels = [];
+        const dataValues = [];
+        const backgroundColors = [];
+
+        Object.keys(summary).forEach(key => {
+            if (summary[key] > 0) {
+                labels.push(`${subjectMeta[key].name} (${(summary[key]/60).toFixed(1)}h)`);
+                dataValues.push(summary[key]);
+                backgroundColors.push(subjectMeta[key].color);
+            }
+        });
+
+        if (dataValues.length === 0) {
+            labels.push(total > 0 ? 'ALL CLEAR! 🎉' : '計画なし');
+            dataValues.push(1);
+            backgroundColors.push('#e2e8f0');
+        }
+
+        burndownChart.data.labels = labels;
+        burndownChart.data.datasets[0].data = dataValues;
+        burndownChart.data.datasets[0].backgroundColor = backgroundColors;
+        burndownChart.update();
+
+        // -------------------------------------------------------------
+        // パドック共有用：Firestoreのパブリックステータスを更新
+        // -------------------------------------------------------------
+        if(currentUser) {
+            const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+            const name = userDoc.exists() ? userDoc.data().name : 'Driver';
+            const target = userDoc.exists() ? userDoc.data().target : '';
+
+            await setDoc(doc(db, "publicStatus", currentUser.uid), {
+                name,
+                target,
+                date: currentSelectedDate,
+                progress: progressPercent,
+                remainingHours: (remaining / 60).toFixed(1),
+                updatedAt: Date.now()
+            });
+        }
+    }
+
+    // タスク完了トグル
+    window.toggleTask = async (id) => {
+        currentDayTasks = currentDayTasks.map(t => t.id === id ? { ...t, done: !t.done } : t);
+        renderTimeline();
+        await saveToFirestore();
+    };
+
+    // 個別タスク追加
+    window.addTask = async () => {
+        const time = document.getElementById('inputTime').value.trim() || '00:00';
+        const duration = parseInt(document.getElementById('inputDuration').value) || 30;
+        const subject = document.getElementById('inputSubject').value;
+        const taskText = document.getElementById('inputTask').value.trim();
+
+        if (!taskText) return alert('タスク内容を入力してください。');
+
+        const newTask = { id: Date.now(), time, duration, subject, task: taskText, done: false };
+        currentDayTasks.push(newTask);
+        
+        renderTimeline();
+        await saveToFirestore();
+
+        // 入力フォームクリア
+        document.getElementById('inputTime').value = '';
+        document.getElementById('inputDuration').value = '';
+        document.getElementById('inputTask').value = '';
+    };
+
+    // タスク削除
+    window.deleteTask = async (id) => {
+        if (!confirm('このタスク計画を削除しますか？')) return;
+        currentDayTasks = currentDayTasks.filter(t => t.id !== id);
+        renderTimeline();
+        await saveToFirestore();
+    };
+
+    // テンプレート機能の一括適用
+    window.applyTemplate = async (type) => {
+        if (!confirm('現在の選択日の計画を上書きし、テンプレートを適用してよろしいですか？')) return;
+
+        if (type === 'phase1') {
+            currentDayTasks = [
+                { id: 1, time: '06:30', duration: 30, subject: 'info', task: '情報の基礎用語 or 公共の暗記 (Warm Up)', done: false },
+                { id: 2, time: '17:30', duration: 120, subject: 'math', task: '数III（極限）1.5h ＋ 弱点補修（ベクトル）0.5h', done: false },
+                { id: 3, time: '20:00', duration: 90, subject: 'physics', task: 'Geminiセッション ＋ セミナー力学（基礎）', done: false },
+                { id: 4, time: '21:30', duration: 90, subject: 'chem', task: 'エクセル理論化学（物質量・濃度など）', done: false }
+            ];
+        } else if (type === 'phase2') {
+            currentDayTasks = [
+                { id: 5, time: '06:30', duration: 60, subject: 'eng', task: '長文読解1題 ＋ シャドーイング', done: false },
+                { id: 6, time: '09:00', duration: 180, subject: 'math', task: '数III（微積分）2h ＋ 弱点補修（日替わり）1h', done: false },
+                { id: 7, time: '13:00', duration: 180, subject: 'physics', task: 'Geminiセッション ＋ セミナー基本問題', done: false },
+                { id: 8, time: '16:30', duration: 180, subject: 'chem', task: 'エクセル理論化学の完結 〜 有機化学へ突入', done: false },
+                { id: 9, time: '21:00', duration: 120, subject: 'info', task: 'エラー記録アプリでの完全再現テスト＋暗記モノ', done: false }
+            ];
+        }
+
+        renderTimeline();
+        await saveToFirestore();
+    };
+
+    // Firestoreへの「1日＝1ドキュメント」での書き込み処理
+    async function saveToFirestore() {
+        if (!currentUser) return;
+        const docRef = doc(db, `users/${currentUser.uid}/dailyPlans/${currentSelectedDate}`);
+        await setDoc(docRef, { tasks: currentDayTasks });
+    }
+
+    // -------------------------------------------------------------
+    // パドック（ソーシャル共有）リアルタイムリッスン
+    // -------------------------------------------------------------
+    function listenToPaddock() {
+        const paddockRef = collection(db, "publicStatus");
+        // 他人のステータス変更をリアルタイムに検知して画面を書き換える
+        onSnapshot(paddockRef, (snapshot) => {
+            const container = document.getElementById('paddockContainer');
+            container.innerHTML = '';
+
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                // 自分以外のユーザーかつ、過去24時間以内に更新されたアクティブなデータを表示
+                if (doc.id !== currentUser.uid && data.updatedAt > Date.now() - 86400000) {
+                    const card = document.createElement('div');
+                    card.className = "bg-cardBg border border-borderLight p-4 rounded-xl space-y-2";
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="text-sm font-black text-textMain block">${data.name}</span>
+                                <span class="text-[10px] text-textSub block truncate max-w-[150px]">${data.target || 'TARGET UNKNOWN'}</span>
+                            </div>
+                            <span class="text-xs bg-white border px-2 py-0.5 rounded-md font-bold text-textMain">${data.date.split('-')[1]}/${data.date.split('-')[2]}</span>
+                        </div>
+                        <div class="pt-1">
+                            <div class="flex justify-between text-xs font-bold mb-1">
+                                <span class="text-textSub">消化進捗</span>
+                                <span class="text-accentBlue">${data.progress}%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-1.5">
+                                <div class="bg-accentBlue h-1.5 rounded-full" style="width: ${data.progress}%"></div>
+                            </div>
+                        </div>
+                        <span class="block text-[10px] text-right text-textSub font-medium">残り推定: ${data.remainingHours}h</span>
+                    `;
+                    container.appendChild(card);
+                }
+            });
+
+            if (container.innerHTML === '') {
+                container.innerHTML = `<p class="text-xs text-textSub col-span-full py-4 text-center">現在アクティブな他のドライバーはいません。孤高のデッドヒートです。 🏎️</p>`;
+            }
+        });
+    }
+
+    // -------------------------------------------------------------
+    // Chart.js 初期化
+    // -------------------------------------------------------------
+    function initChart() {
+        const ctx = document.getElementById('burndownChart').getContext('2d');
+        if (burndownChart) burndownChart.destroy(); // 再ログイン時の重複防止
+        
+        burndownChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: [],
+                datasets: [{ data: [], backgroundColor: [], borderWidth: 0, hoverOffset: 8 }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '72%',
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { font: { family: "'Noto Sans JP', sans-serif", size: 11, weight: 'bold' }, color: '#64748b', padding: 15 }
+                    }
+                }
+            }
+        });
+    }
+</script>
+
+</body>
+</html>
