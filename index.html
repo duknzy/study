@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>長崎大学・夏季フルアップデート計画 (Firebase Cloud)</title>
+    <title>長崎大学・夏季フルアップデート計画 (Firebase & Google Auth)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -30,8 +30,6 @@
     <style>
         body { background-color: #fcfbf9; color: #334155; -webkit-font-smoothing: antialiased; }
         .chart-container { position: relative; width: 100%; max-width: 600px; margin: 0 auto; height: 35vh; max-height: 350px; }
-        .interactive-card { transition: all 0.2s ease-in-out; }
-        .interactive-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); }
         .task-done { text-decoration: line-through; opacity: 0.4; background-color: #f1f5f9 !important; border-color: #cbd5e1 !important; }
         .hidden-screen { display: none !important; }
     </style>
@@ -39,57 +37,63 @@
 <body class="bg-baseBg min-h-screen">
 
 <!-- ========================================== -->
-<!-- 1. AUTH SCREEN (ログイン・新規登録画面) -->
+<!-- 1. AUTH SCREEN (Googleログイン画面) -->
 <!-- ========================================== -->
 <div id="auth-screen" class="min-h-screen flex items-center justify-center px-4">
-    <div class="bg-white p-8 rounded-2xl border border-borderLight shadow-sm max-w-md w-full space-y-6">
-        <div class="text-center">
-            <h1 class="text-2xl font-black text-textMain tracking-tight">🏁 学習テレメトリーシステム</h1>
+    <div class="bg-white p-8 rounded-2xl border border-borderLight shadow-sm max-w-md w-full text-center space-y-6">
+        <div>
+            <h1 class="text-2xl font-black text-textMain tracking-tight">🏁 チーム・テレメトリー</h1>
             <p class="text-sm text-textSub mt-1">長崎大学 フルアップデート計画</p>
         </div>
 
-        <!-- Toggle Tabs -->
-        <div class="flex border-b border-borderLight text-sm font-bold">
-            <button id="tab-login" onclick="toggleAuthMode('login')" class="w-1/2 pb-2 text-accentBlue border-b-2 border-accentBlue">ログイン</button>
-            <button id="tab-signup" onclick="toggleAuthMode('signup')" class="w-1/2 pb-2 text-textSub">新規登録</button>
+        <p class="text-xs text-textSub leading-relaxed">
+            このアプリは複数人で学習計画とバーンダウン進捗をリアルタイム共有するシステムです。
+        </p>
+
+        <button onclick="handleGoogleLogin()" class="w-full flex items-center justify-center gap-3 bg-white border border-borderLight text-textMain font-bold py-3 px-4 rounded-xl text-sm shadow-xs hover:bg-gray-50 transition-colors">
+            <svg class="w-5 h-5" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            Googleアカウントでログイン
+        </button>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- 2. PROFILE SETUP SCREEN (初回ログイン時のみ表示) -->
+<!-- ========================================== -->
+<div id="profile-setup-screen" class="min-h-screen flex items-center justify-center px-4 hidden-screen">
+    <div class="bg-white p-8 rounded-2xl border border-borderLight shadow-sm max-w-md w-full space-y-6">
+        <div>
+            <h2 class="text-xl font-bold text-textMain">🏎️ ドライバープロフィールの設定</h2>
+            <p class="text-sm text-textSub mt-1">初回ログインのため、あなたの情報を教えてください。</p>
         </div>
 
-        <!-- Forms -->
         <div class="space-y-4">
-            <!-- 新規登録時のみ表示するフィールド -->
-            <div id="signup-fields" class="hidden space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-textSub uppercase mb-1">ドライバーネーム</label>
-                    <input type="text" id="auth-name" placeholder="例: ひろ" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-textSub uppercase mb-1">ターゲット（志望校・学部）</label>
-                    <input type="text" id="auth-target" placeholder="例: 情報データ科学部 / 工学部 a方式" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
-                </div>
-            </div>
-
             <div>
-                <label class="block text-xs font-bold text-textSub uppercase mb-1">メールアドレス</label>
-                <input type="email" id="auth-email" placeholder="driver@example.com" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
+                <label class="block text-xs font-bold text-textSub uppercase mb-1">ドライバーネーム</label>
+                <input type="text" id="setup-name" placeholder="例: ひろ" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
             </div>
             <div>
-                <label class="block text-xs font-bold text-textSub uppercase mb-1">パスワード</label>
-                <input type="password" id="auth-password" placeholder="••••••••" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
+                <label class="block text-xs font-bold text-textSub uppercase mb-1">ターゲット（志望校・学部）</label>
+                <input type="text" id="setup-target" placeholder="例: 情報データ科学部 / 工学部 a方式" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
             </div>
-
-            <button id="btn-auth-submit" onclick="handleAuthSubmit()" class="w-full bg-textMain text-white font-bold py-2.5 rounded-xl text-sm hover:bg-slate-800 transition-colors">
-                ログイン実行
+            <button onclick="handleProfileSubmit()" class="w-full bg-accentBlue text-white font-bold py-2.5 rounded-xl text-sm hover:bg-blue-600 transition-colors">
+                セットアップを完了して cockpit へ
             </button>
         </div>
     </div>
 </div>
 
 <!-- ========================================== -->
-<!-- 2. MAIN DASHBOARD (メイン画面) -->
+<!-- 3. MAIN DASHBOARD (メイン画面) -->
 <!-- ========================================== -->
 <div id="main-dashboard" class="hidden-screen">
     <header class="bg-white border-b border-borderLight sticky top-0 z-50 shadow-sm">
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center">
             <div>
                 <h1 class="text-2xl font-black text-textMain tracking-tight">🏁 長崎大学 フルアップデート計画</h1>
                 <p class="text-sm text-textSub mt-1" id="userTargetDisplay">Target: ロード中...</p>
@@ -106,9 +110,8 @@
         </div>
     </header>
 
-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
-        
-        <!-- DASHBOARD OVERVIEW -->
+    <main class="max-w-6xl mx-auto px-4 py-8 space-y-12">
+        <!-- グラフエリア -->
         <section id="overview">
             <div class="mb-4">
                 <h2 class="text-xl font-bold text-textMain">📊 本日の残り勉強時間（バーンダウン）</h2>
@@ -136,14 +139,13 @@
             </div>
         </section>
 
-        <!-- PLANNER & TELEMETRY -->
+        <!-- タイムライン & 計画追加 -->
         <section id="telemetry">
             <div class="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h2 class="text-xl font-bold text-textMain">⏱️ Daily Telemetry</h2>
                     <p class="text-sm text-textSub">日付を選択して計画をセット・消化します。</p>
                 </div>
-                <!-- Date Selector -->
                 <div class="flex items-center gap-2">
                     <label class="text-sm font-bold text-textSub">表示日:</label>
                     <input type="date" id="currentDateInput" onchange="loadDateData()" class="px-3 py-2 rounded-xl border border-borderLight bg-white font-bold text-sm text-textMain">
@@ -151,19 +153,15 @@
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                <!-- Left: Forms & Templates -->
                 <div class="space-y-4 col-span-1">
-                    <!-- Template Apply -->
                     <div class="bg-white p-5 rounded-2xl border border-borderLight shadow-sm space-y-3">
-                        <h4 class="text-sm font-bold text-textMain">📋 ルーティン・テンプレートを適用</h4>
-                        <p class="text-xs text-textSub">選択中の日付に標準の予定セットを一括展開します（既存データは上書きされます）。</p>
+                        <h4 class="text-sm font-bold text-textMain">📋 テンプレートを適用</h4>
                         <div class="grid grid-cols-2 gap-2 pt-1">
                             <button onclick="applyTemplate('phase1')" class="px-3 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-accentBlue rounded-xl font-bold text-xs transition-colors">フェーズ1 (学校)</button>
                             <button onclick="applyTemplate('phase2')" class="px-3 py-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-accentOrange rounded-xl font-bold text-xs transition-colors">フェーズ2 (完全休日)</button>
                         </div>
                     </div>
 
-                    <!-- Task Form -->
                     <div class="bg-white p-5 rounded-2xl border border-borderLight shadow-sm space-y-4">
                         <h4 class="text-sm font-bold text-textMain">🛠️ 個別計画の追加</h4>
                         <div class="space-y-3">
@@ -176,7 +174,7 @@
                                 <input type="number" id="inputDuration" placeholder="例: 90" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-textSub mb-1">対象セクター (科目)</label>
+                                <label class="block text-xs font-bold text-textSub mb-1">対象セクター</label>
                                 <select id="inputSubject" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
                                     <option value="math">数学</option>
                                     <option value="physics">物理</option>
@@ -189,48 +187,37 @@
                                 <label class="block text-xs font-bold text-textSub mb-1">タスク詳細</label>
                                 <input type="text" id="inputTask" placeholder="例: セミナー力学基本問題" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
                             </div>
-                            <button onclick="addTask()" class="w-full bg-textMain text-white font-bold py-2 rounded-xl text-sm hover:bg-slate-800 transition-colors">
-                                計画を登録
-                            </button>
+                            <button onclick="addTask()" class="w-full bg-textMain text-white font-bold py-2 rounded-xl text-sm hover:bg-slate-800 transition-colors">登録</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Right: Dynamic Timeline -->
                 <div class="col-span-1 lg:col-span-2 bg-white rounded-2xl border border-borderLight p-6 shadow-sm min-h-[300px]">
-                    <h3 class="text-md font-bold text-textMain mb-4 border-b pb-2">📋 本日のタイムライン・指示書</h3>
-                    <div id="timelineContainer" class="space-y-4">
-                        <!-- JSで動的にタスクを生成 -->
-                    </div>
+                    <h3 class="text-md font-bold text-textMain mb-4 border-b pb-2">📋 本日の指示書</h3>
+                    <div id="timelineContainer" class="space-y-4"></div>
                 </div>
             </div>
         </section>
 
-        <!-- SOCIAL PADOCK -->
+        <!-- パドック共有 -->
         <section id="padock" class="bg-white rounded-2xl border border-borderLight p-6 shadow-sm">
             <div class="mb-4">
-                <h2 class="text-xl font-bold text-textMain flex items-center gap-2">🏁 Paddock (ライバル・仲間の進捗)</h2>
-                <p class="text-sm text-textSub mt-1">同じアプリを使う他のドライバーの「今日の消化率」がリアルタイムに共有されます。</p>
+                <h2 class="text-xl font-bold text-textMain flex items-center gap-2">🏁 Paddock (仲間のリアルタイム進捗)</h2>
             </div>
-            <div id="paddockContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                <!-- 他のユーザーの進捗カードが動的に挿入されます -->
-            </div>
+            <div id="paddockContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
         </section>
     </main>
 </div>
 
 <!-- ========================================== -->
-<!-- 3. FIREBASE INTEGRATION SCRIPT -->
+<!-- 4. FIREBASE SDK & LOGIC -->
 <!-- ========================================== -->
 <script type="module">
-    // Firebase SDKのインポート (CDN経由・v10モジュール版)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // -------------------------------------------------------------
-    // 【重要】ご自身のFirebaseプロジェクトのWebアプリ設定値に書き換えてください
-    // -------------------------------------------------------------
+    // 【重要】ご自身のConfigデータに差し替えてください
     // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyDam0BRv-0636AFeXaHV3HQW6Dq2nGX8fs",
@@ -242,15 +229,13 @@ const firebaseConfig = {
   measurementId: "G-JJWDFKG1HD"
 };
 
-    // Firebaseの初期化
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    const provider = new GoogleAuthProvider();
 
-    // アプリのグローバル状態管理変数
     let currentUser = null;
-    let authMode = 'login';
-    let currentSelectedDate = '2026-07-21'; // デフォルト日付設定
+    let currentSelectedDate = '2026-07-21';
     let burndownChart = null;
     let currentDayTasks = [];
 
@@ -262,120 +247,92 @@ const firebaseConfig = {
         info: { name: 'その他/情報', color: '#64748b', bg: 'bg-slate-50', border: 'border-slate-100', text: 'text-textSub' }
     };
 
-    // -------------------------------------------------------------
-    // 認証監視 (Auth State Observer)
-    // -------------------------------------------------------------
+    // 認証監視
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             currentUser = user;
             document.getElementById('auth-screen').classList.add('hidden-screen');
-            document.getElementById('main-dashboard').classList.remove('hidden-screen');
-            
-            // カレンダーの初期値セット
-            document.getElementById('currentDateInput').value = currentSelectedDate;
 
-            // ユーザープロフィール取得
-            const userDoc = await getDoc(doc(db, "users", user.uid));
+            // ユーザープロフィールチェック
+            const userDocRef = doc(db, "users", user.uid);
+            const userDoc = await getDoc(userDocRef);
+
             if (userDoc.exists()) {
-                const userData = userDoc.data();
-                document.getElementById('userNameDisplay').innerText = userData.name || 'No Name';
-                document.getElementById('userTargetDisplay').innerText = `Target: ${userData.target || '未設定'}`;
+                // 登録済みならダッシュボード展開
+                showDashboard(userDoc.data());
+            } else {
+                // 未登録（初回）ならプロフィールセットアップ画面を表示
+                document.getElementById('profile-setup-screen').classList.remove('hidden-screen');
+                // Googleアカウントの登録名をデフォルト値としてセットしておく
+                document.getElementById('setup-name').value = user.displayName || "";
             }
-
-            initChart();
-            loadDateData();
-            listenToPaddock(); // パドック共有のリアルタイムリッスン開始
         } else {
             currentUser = null;
             document.getElementById('auth-screen').classList.remove('hidden-screen');
             document.getElementById('main-dashboard').classList.add('hidden-screen');
+            document.getElementById('profile-setup-screen').classList.add('hidden-screen');
         }
     });
 
-    // -------------------------------------------------------------
-    // 認証ロジック (Authentication Actions)
-    // -------------------------------------------------------------
-    window.toggleAuthMode = (mode) => {
-        authMode = mode;
-        const signupFields = document.getElementById('signup-fields');
-        const tabLogin = document.getElementById('tab-login');
-        const tabSignup = document.getElementById('tab-signup');
-        const btnSubmit = document.getElementById('btn-auth-submit');
-
-        if (mode === 'signup') {
-            signupFields.classList.remove('hidden');
-            tabSignup.className = "w-1/2 pb-2 text-accentBlue border-b-2 border-accentBlue";
-            tabLogin.className = "w-1/2 pb-2 text-textSub";
-            btnSubmit.innerText = "新規アカウント作成";
-        } else {
-            signupFields.classList.add('hidden');
-            tabLogin.className = "w-1/2 pb-2 text-accentBlue border-b-2 border-accentBlue";
-            tabSignup.className = "w-1/2 pb-2 text-textSub";
-            btnSubmit.innerText = "ログイン実行";
-        }
-    };
-
-    window.handleAuthSubmit = async () => {
-        const email = document.getElementById('auth-email').value.trim();
-        const password = document.getElementById('auth-password').value;
-        
-        if(!email || !password) return alert('メールアドレスとパスワードを入力してください。');
-
+    // Googleログイン処理
+    window.handleGoogleLogin = async () => {
         try {
-            if (authMode === 'signup') {
-                const name = document.getElementById('auth-name').value.trim();
-                const target = document.getElementById('auth-target').value.trim();
-                if(!name) return alert('ドライバーネームを入力してください。');
-
-                // アカウント作成
-                const credential = await createUserWithEmailAndPassword(auth, email, password);
-                // ユーザープロフィールの初期設定
-                await setDoc(doc(db, "users", credential.user.uid), { name, target });
-            } else {
-                // ログイン
-                await signInWithEmailAndPassword(auth, email, password);
-            }
+            await signInWithPopup(auth, provider);
         } catch (error) {
-            alert(`エラー: ${error.message}`);
+            alert(`ログインエラー: ${error.message}`);
         }
     };
+
+    // 初回プロフィール登録処理
+    window.handleProfileSubmit = async () => {
+        const name = document.getElementById('setup-name').value.trim();
+        const target = document.getElementById('setup-target').value.trim();
+
+        if (!name || !target) return alert('ネームとターゲットを両方入力してください。');
+
+        const userData = { name, target };
+        await setDoc(doc(db, "users", currentUser.uid), userData);
+        
+        document.getElementById('profile-setup-screen').classList.add('hidden-screen');
+        showDashboard(userData);
+    };
+
+    // ダッシュボード起動
+    function showDashboard(userData) {
+        document.getElementById('main-dashboard').classList.remove('hidden-screen');
+        document.getElementById('userNameDisplay').innerText = userData.name;
+        document.getElementById('userTargetDisplay').innerText = `Target: ${userData.target}`;
+        document.getElementById('currentDateInput').value = currentSelectedDate;
+
+        initChart();
+        loadDateData();
+        listenToPaddock();
+    }
 
     window.handleLogout = () => {
-        if(confirm('ログアウトしますか？')) signOut(auth);
+        if (confirm('ログアウトしますか？')) signOut(auth);
     };
 
-    // -------------------------------------------------------------
-    // データ通信・表示ロジック (Firestore & UI Actions)
-    // -------------------------------------------------------------
-    
-    // 特定日の計画データをロード
+    // 以下、Firestore連動のタイムライン・グラフコアロジック（仕様維持）
     window.loadDateData = async () => {
         currentSelectedDate = document.getElementById('currentDateInput').value;
         if (!currentUser) return;
 
-        const planDocRef = doc(db, `users/${currentUser.uid}/dailyPlans/${currentSelectedDate}`);
-        const planDoc = await getDoc(planDocRef);
-
-        if (planDoc.exists()) {
-            currentDayTasks = planDoc.data().tasks || [];
-        } else {
-            currentDayTasks = [];
-        }
+        const planDoc = await getDoc(doc(db, `users/${currentUser.uid}/dailyPlans/${currentSelectedDate}`));
+        currentDayTasks = planDoc.exists() ? (planDoc.data().tasks || []) : [];
         renderTimeline();
     };
 
-    // タイムライン描画 ＆ 統計計算
     function renderTimeline() {
         const container = document.getElementById('timelineContainer');
         container.innerHTML = '';
 
         if (currentDayTasks.length === 0) {
-            container.innerHTML = `<div class="text-center py-12 text-sm text-textSub">この日の計画はまだ白紙です。左側から予定を追加するか、テンプレートを適用してください。</div>`;
+            container.innerHTML = `<div class="text-center py-12 text-sm text-textSub">この日の計画はまだ白紙です。テンプレートを適用するか予定を追加してください。</div>`;
             updateChartAndStats(0, 0, {});
             return;
         }
 
-        // 時間順でソート
         currentDayTasks.sort((a, b) => a.time.localeCompare(b.time));
 
         let totalMinutes = 0;
@@ -387,16 +344,12 @@ const firebaseConfig = {
             if (task.done) {
                 completedMinutes += task.duration;
             } else {
-                // 残り時間グラフ用には「未完了」の分数のみ集計
                 subjectSummary[task.subject] += task.duration;
             }
 
             const meta = subjectMeta[task.subject];
-            const isChecked = task.done ? 'checked' : '';
-            const doneClass = task.done ? 'task-done' : '';
-
             const block = document.createElement('div');
-            block.className = `flex gap-4 items-start p-4 border rounded-xl transition-all bg-white border-borderLight shadow-xs ${doneClass}`;
+            block.className = `flex gap-4 items-start p-4 border rounded-xl bg-white border-borderLight shadow-xs ${task.done ? 'task-done' : ''}`;
             block.innerHTML = `
                 <div class="w-16 text-right shrink-0 mt-0.5">
                     <span class="text-sm font-black text-textMain block">${task.time}</span>
@@ -407,10 +360,10 @@ const firebaseConfig = {
                         <span class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${meta.bg} ${meta.text}">${meta.name}</span>
                         <button onclick="deleteTask(${task.id})" class="text-xs text-gray-300 hover:text-red-500 transition-colors font-medium">削除</button>
                     </div>
-                    <p class="text-sm text-textMain mt-1.5 font-medium leading-relaxed">${task.task}</p>
+                    <p class="text-sm text-textMain mt-1.5 font-medium">${task.task}</p>
                 </div>
                 <div class="flex items-center h-full my-auto pl-2">
-                    <input type="checkbox" ${isChecked} onclick="toggleTask(${task.id})" class="w-5 h-5 rounded text-accentBlue focus:ring-accentBlue border-gray-300 cursor-pointer transition-transform scale-110">
+                    <input type="checkbox" ${task.done ? 'checked' : ''} onclick="toggleTask(${task.id})" class="w-5 h-5 rounded text-accentBlue focus:ring-accentBlue border-gray-300 cursor-pointer scale-110">
                 </div>
             `;
             container.appendChild(block);
@@ -419,22 +372,17 @@ const firebaseConfig = {
         updateChartAndStats(totalMinutes, completedMinutes, subjectSummary);
     }
 
-    // ダッシュボードスタッツ更新 ＆ パドック用公開データの更新
     async function updateChartAndStats(total, completed, summary) {
         const remaining = total - completed;
-        
-        // 残り時間表示テキストの更新
         const rHours = Math.floor(remaining / 60);
         const rMins = remaining % 60;
         document.getElementById('totalRemainingText').innerHTML = `${rHours}<span class="text-lg font-bold text-textSub ml-1">h ${rMins}m</span>`;
 
-        // プログレスバーの更新
         const progressPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
         document.getElementById('progressPercentage').innerText = `${progressPercent}%`;
         document.getElementById('progressBar').style.width = `${progressPercent}%`;
         document.getElementById('chartTitle').innerText = `${currentSelectedDate} の残り勉強リソース`;
 
-        // ドーナツグラフのデータ再構築
         const labels = [];
         const dataValues = [];
         const backgroundColors = [];
@@ -458,33 +406,27 @@ const firebaseConfig = {
         burndownChart.data.datasets[0].backgroundColor = backgroundColors;
         burndownChart.update();
 
-        // -------------------------------------------------------------
-        // パドック共有用：Firestoreのパブリックステータスを更新
-        // -------------------------------------------------------------
-        if(currentUser) {
+        if (currentUser) {
             const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-            const name = userDoc.exists() ? userDoc.data().name : 'Driver';
-            const target = userDoc.exists() ? userDoc.data().target : '';
-
-            await setDoc(doc(db, "publicStatus", currentUser.uid), {
-                name,
-                target,
-                date: currentSelectedDate,
-                progress: progressPercent,
-                remainingHours: (remaining / 60).toFixed(1),
-                updatedAt: Date.now()
-            });
+            if(userDoc.exists()) {
+                await setDoc(doc(db, "publicStatus", currentUser.uid), {
+                    name: userDoc.data().name,
+                    target: userDoc.data().target,
+                    date: currentSelectedDate,
+                    progress: progressPercent,
+                    remainingHours: (remaining / 60).toFixed(1),
+                    updatedAt: Date.now()
+                });
+            }
         }
     }
 
-    // タスク完了トグル
     window.toggleTask = async (id) => {
         currentDayTasks = currentDayTasks.map(t => t.id === id ? { ...t, done: !t.done } : t);
         renderTimeline();
         await saveToFirestore();
     };
 
-    // 個別タスク追加
     window.addTask = async () => {
         const time = document.getElementById('inputTime').value.trim() || '00:00';
         const duration = parseInt(document.getElementById('inputDuration').value) || 30;
@@ -493,19 +435,15 @@ const firebaseConfig = {
 
         if (!taskText) return alert('タスク内容を入力してください。');
 
-        const newTask = { id: Date.now(), time, duration, subject, task: taskText, done: false };
-        currentDayTasks.push(newTask);
-        
+        currentDayTasks.push({ id: Date.now(), time, duration, subject, task: taskText, done: false });
         renderTimeline();
         await saveToFirestore();
 
-        // 入力フォームクリア
         document.getElementById('inputTime').value = '';
         document.getElementById('inputDuration').value = '';
         document.getElementById('inputTask').value = '';
     };
 
-    // タスク削除
     window.deleteTask = async (id) => {
         if (!confirm('このタスク計画を削除しますか？')) return;
         currentDayTasks = currentDayTasks.filter(t => t.id !== id);
@@ -513,10 +451,8 @@ const firebaseConfig = {
         await saveToFirestore();
     };
 
-    // テンプレート機能の一括適用
     window.applyTemplate = async (type) => {
-        if (!confirm('現在の選択日の計画を上書きし、テンプレートを適用してよろしいですか？')) return;
-
+        if (!confirm('既存の計画を上書きしてテンプレートを適用しますか？')) return;
         if (type === 'phase1') {
             currentDayTasks = [
                 { id: 1, time: '06:30', duration: 30, subject: 'info', task: '情報の基礎用語 or 公共の暗記 (Warm Up)', done: false },
@@ -533,31 +469,22 @@ const firebaseConfig = {
                 { id: 9, time: '21:00', duration: 120, subject: 'info', task: 'エラー記録アプリでの完全再現テスト＋暗記モノ', done: false }
             ];
         }
-
         renderTimeline();
         await saveToFirestore();
     };
 
-    // Firestoreへの「1日＝1ドキュメント」での書き込み処理
     async function saveToFirestore() {
         if (!currentUser) return;
-        const docRef = doc(db, `users/${currentUser.uid}/dailyPlans/${currentSelectedDate}`);
-        await setDoc(docRef, { tasks: currentDayTasks });
+        await setDoc(doc(db, `users/${currentUser.uid}/dailyPlans/${currentSelectedDate}`), { tasks: currentDayTasks });
     }
 
-    // -------------------------------------------------------------
-    // パドック（ソーシャル共有）リアルタイムリッスン
-    // -------------------------------------------------------------
     function listenToPaddock() {
-        const paddockRef = collection(db, "publicStatus");
-        // 他人のステータス変更をリアルタイムに検知して画面を書き換える
-        onSnapshot(paddockRef, (snapshot) => {
+        onSnapshot(collection(db, "publicStatus"), (snapshot) => {
             const container = document.getElementById('paddockContainer');
             container.innerHTML = '';
 
             snapshot.forEach((doc) => {
                 const data = doc.data();
-                // 自分以外のユーザーかつ、過去24時間以内に更新されたアクティブなデータを表示
                 if (doc.id !== currentUser.uid && data.updatedAt > Date.now() - 86400000) {
                     const card = document.createElement('div');
                     card.className = "bg-cardBg border border-borderLight p-4 rounded-xl space-y-2";
@@ -570,13 +497,8 @@ const firebaseConfig = {
                             <span class="text-xs bg-white border px-2 py-0.5 rounded-md font-bold text-textMain">${data.date.split('-')[1]}/${data.date.split('-')[2]}</span>
                         </div>
                         <div class="pt-1">
-                            <div class="flex justify-between text-xs font-bold mb-1">
-                                <span class="text-textSub">消化進捗</span>
-                                <span class="text-accentBlue">${data.progress}%</span>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded-full h-1.5">
-                                <div class="bg-accentBlue h-1.5 rounded-full" style="width: ${data.progress}%"></div>
-                            </div>
+                            <div class="flex justify-between text-xs font-bold mb-1"><span class="text-textSub">消化進捗</span><span class="text-accentBlue">${data.progress}%</span></div>
+                            <div class="w-full bg-gray-200 rounded-full h-1.5"><div class="bg-accentBlue h-1.5 rounded-full" style="width: ${data.progress}%"></div></div>
                         </div>
                         <span class="block text-[10px] text-right text-textSub font-medium">残り推定: ${data.remainingHours}h</span>
                     `;
@@ -585,34 +507,22 @@ const firebaseConfig = {
             });
 
             if (container.innerHTML === '') {
-                container.innerHTML = `<p class="text-xs text-textSub col-span-full py-4 text-center">現在アクティブな他のドライバーはいません。孤高のデッドヒートです。 🏎️</p>`;
+                container.innerHTML = `<p class="text-xs text-textSub col-span-full py-4 text-center">現在アクティブな他ドライバーはいません。孤高のデッドヒートです。 🏎️</p>`;
             }
         });
     }
 
-    // -------------------------------------------------------------
-    // Chart.js 初期化
-    // -------------------------------------------------------------
     function initChart() {
         const ctx = document.getElementById('burndownChart').getContext('2d');
-        if (burndownChart) burndownChart.destroy(); // 再ログイン時の重複防止
-        
+        if (burndownChart) burndownChart.destroy();
         burndownChart = new Chart(ctx, {
             type: 'doughnut',
-            data: {
-                labels: [],
-                datasets: [{ data: [], backgroundColor: [], borderWidth: 0, hoverOffset: 8 }]
-            },
+            data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderWidth: 0, hoverOffset: 8 }] },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 cutout: '72%',
-                plugins: {
-                    legend: {
-                        position: 'right',
-                        labels: { font: { family: "'Noto Sans JP', sans-serif", size: 11, weight: 'bold' }, color: '#64748b', padding: 15 }
-                    }
-                }
+                plugins: { legend: { position: 'right', labels: { font: { family: "'Noto Sans JP', sans-serif", size: 11, weight: 'bold' }, color: '#64748b', padding: 15 } } }
             }
         });
     }
