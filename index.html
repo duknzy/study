@@ -29,7 +29,6 @@
     
     <style>
         body { background-color: #fcfbf9; color: #334155; -webkit-font-smoothing: antialiased; }
-        /* 文字盤の数字がはみ出さないようにコンテナのサイズを最適化 */
         .chart-container { position: relative; width: 100%; max-width: 480px; margin: 0 auto; height: 45vh; max-height: 430px; }
         .task-done { text-decoration: line-through; opacity: 0.4; background-color: #f1f5f9 !important; border-color: #cbd5e1 !important; }
         .hidden-screen { display: none !important; }
@@ -44,7 +43,7 @@
 <div id="auth-screen" class="min-h-screen flex items-center justify-center px-4">
     <div class="bg-white p-8 rounded-2xl border border-borderLight shadow-sm max-w-md w-full text-center space-y-6">
         <div>
-            <h1 class="text-2xl font-black text-textMain tracking-tight">🏁 24h 固定文字盤テレメトリー v4.5</h1>
+            <h1 class="text-2xl font-black text-textMain tracking-tight">🏁 24h 固定文字盤テレメトリー v4.5.1</h1>
             <p class="text-sm text-textSub mt-1">長崎大学 フルアップデート計画</p>
         </div>
         <p class="text-xs text-textSub leading-relaxed">一日の全リソースを24時間時計の文字盤として完全同期・可視化します。</p>
@@ -122,7 +121,6 @@
                         <h3 class="text-sm font-bold text-textMain" id="chartTitle">本日の24時間リソース配分</h3>
                         <span class="text-xs font-black text-accentBlue bg-blue-50 px-2.5 py-1 rounded-lg">⏱️ 24h 固定文字盤連動</span>
                     </div>
-                    <!-- 右側の凡例スペースを完全排除した最大化コンテナ -->
                     <div class="chart-container"><canvas id="burndownChart"></canvas></div>
                 </div>
                 
@@ -297,7 +295,7 @@
 </div>
 
 <!-- ========================================== -->
-<!-- 4. FIREBASE SDK & CORE ENGINE -->
+<!-- 5. FIREBASE SDK & CORE ENGINE -->
 <!-- ========================================== -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -313,6 +311,7 @@
   appId: "1:109550426134:web:b23dbcb349e1e6ea4a7d37",
   measurementId: "G-JJWDFKG1HD"
 };
+
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
@@ -614,7 +613,6 @@
         }
     };
 
-    // ★ALGORITHM TUNING★ 時計盤としてのタイムラインマッピング（常に1440分）[cite: 1]
     function update24hChartAndStats(tasks) {
         let totalStudyPlanned = 0, totalStudyCompleted = 0;
         
@@ -640,19 +638,18 @@
             const [h, m] = t.time.split(':').map(Number);
             const taskStartMinute = h * 60 + m;
             
-            // 空白を「自由枠」として自動穴埋め
             if (taskStartMinute > currentTimelineMinute) {
                 const gapDuration = taskStartMinute - currentTimelineMinute;
                 chartBlocks.push({
                     label: `自由枠`,
                     duration: gapDuration,
-                    color: '#f8f6f0' // 邪魔をしない薄い背景色
+                    color: '#f8f6f0'
                 });
             }
             
             const meta = subjectMeta[t.subject];
             let label = meta.name;
-            let color = t.done ? '#cbd5e1' : meta.color; // 消化済みはグレーアウト[cite: 1]
+            let color = t.done ? '#cbd5e1' : meta.color;
 
             chartBlocks.push({ label, duration: t.duration, color });
             currentTimelineMinute = taskStartMinute + t.duration;
@@ -768,46 +765,38 @@
         });
     }
 
-    // ★ENGINE CORE OVERHAUL★ 24時間の固定文字盤(0〜23)をキャンバスに直接レンダリングする描画プラグイン
     function initChart() {
         const ctx = document.getElementById('burndownChart').getContext('2d');
         if (burndownChart) burndownChart.destroy();
         
-        // ひろの手書き図をそのまま再現する24時間固定の文字盤描画モジュール[cite: 1]
         const clockFacePlugin = {
             id: 'clockFace',
             afterDraw: (chart) => {
                 const { ctx, chartArea } = chart;
                 if (!chartArea) return;
                 
-                // グラフの中央座標を取得
                 const centerX = (chartArea.left + chartArea.right) / 2;
                 const centerY = (chartArea.top + chartArea.bottom) / 2;
-                // ドーナツグラフの1番外側の半径を取得
                 const outerRadius = chart.getDatasetMeta(0).data[0]?.outerRadius || 0;
                 
                 if (!outerRadius) return;
                 
                 ctx.save();
-                ctx.font = '900 11px "Noto Sans JP", sans-serif'; // 太文字でハッキリ化
+                ctx.font = '900 11px "Noto Sans JP", sans-serif';
                 ctx.fillStyle = '#64748b';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 
-                const numberDistance = outerRadius + 18; // 円の外周から少し離した位置に数字を置く
+                const numberDistance = outerRadius + 18;
                 
-                // 24時間分の文字盤を一周等分ループでマッピング[cite: 1]
                 for (let h = 0; h < 24; h++) {
-                    // 1時間＝15度。真上が「0時」になるように-90度オフセット[cite: 1]
                     const angle = (h * 15 - 90) * Math.PI / 180;
                     
                     const numX = centerX + Math.cos(angle) * numberDistance;
                     const numY = centerY + Math.sin(angle) * numberDistance;
                     
-                    // 数字（0〜23）を印字
                     ctx.fillText(h.toString(), numX, numY);
                     
-                    // 時計盤らしい「目盛り線（チック）」も生成して視覚補強
                     const tickStart = outerRadius + 2;
                     const tickEnd = outerRadius + 6;
                     const tX1 = centerX + Math.cos(angle) * tickStart;
@@ -828,22 +817,23 @@
         
         burndownChart = new Chart(ctx, {
             type: 'doughnut',
-            plugins: [clockFacePlugin], // 自作プラグインを注入
+            plugins: [clockFacePlugin],
             data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderWidth: 1, borderColor: '#ffffff' }] },
             options: {
                 responsive: true, 
                 maintainAspectRatio: false, 
-                cutout: '70%', // メーターの太さを絶妙なバランスに
-                rotation: -90, // データブロック自体の開始位置も完全に「真上(00:00)」に強制リセット
+                cutout: '70%', 
+                // ★バグ修正：Chart.js本来の初期値である 0 (真上から時計回り) にカチッと戻します[cite: 1]
+                rotation: 0, 
                 layout: {
-                    padding: 26 // 周囲に書く数字が画面端にぶつかって消えないように余白を固定確保
+                    padding: 26 
                 },
                 plugins: { 
                     legend: { 
-                        display: false // 右の凡例スペースは完全に抹殺[cite: 1]
+                        display: false 
                     },
                     tooltip: {
-                        enabled: true, // 各ブロックの中身は、ホバーした時だけスマートにポップアップ
+                        enabled: true,
                         callbacks: {
                             label: (context) => {
                                 return ` ${context.label}: ${context.raw}分`;
