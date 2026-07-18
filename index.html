@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>長崎大学・夏季フルアップデート計画 (Firebase & Google Auth)</title>
+    <title>長崎大学・夏季フルアップデート計画 (Telemetry v2)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -29,27 +29,24 @@
     
     <style>
         body { background-color: #fcfbf9; color: #334155; -webkit-font-smoothing: antialiased; }
-        .chart-container { position: relative; width: 100%; max-width: 600px; margin: 0 auto; height: 35vh; max-height: 350px; }
+        .chart-container { position: relative; width: 100%; max-width: 600px; margin: 0 auto; height: 32vh; max-height: 320px; }
         .task-done { text-decoration: line-through; opacity: 0.4; background-color: #f1f5f9 !important; border-color: #cbd5e1 !important; }
         .hidden-screen { display: none !important; }
+        .tab-active { border-color: #3b82f6; color: #3b82f6; font-weight: 900; }
     </style>
 </head>
 <body class="bg-baseBg min-h-screen">
 
 <!-- ========================================== -->
-<!-- 1. AUTH SCREEN (Googleログイン画面) -->
+<!-- 1. AUTH SCREEN (Googleログイン) -->
 <!-- ========================================== -->
 <div id="auth-screen" class="min-h-screen flex items-center justify-center px-4">
     <div class="bg-white p-8 rounded-2xl border border-borderLight shadow-sm max-w-md w-full text-center space-y-6">
         <div>
-            <h1 class="text-2xl font-black text-textMain tracking-tight">🏁 チーム・テレメトリー</h1>
+            <h1 class="text-2xl font-black text-textMain tracking-tight">🏁 チーム・テレメトリー v2</h1>
             <p class="text-sm text-textSub mt-1">長崎大学 フルアップデート計画</p>
         </div>
-
-        <p class="text-xs text-textSub leading-relaxed">
-            このアプリは複数人で学習計画とバーンダウン進捗をリアルタイム共有するシステムです。
-        </p>
-
+        <p class="text-xs text-textSub leading-relaxed">Googleアカウントで認証し、あなたのコックピットにアクセスします。</p>
         <button onclick="handleGoogleLogin()" class="w-full flex items-center justify-center gap-3 bg-white border border-borderLight text-textMain font-bold py-3 px-4 rounded-xl text-sm shadow-xs hover:bg-gray-50 transition-colors">
             <svg class="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -63,161 +60,237 @@
 </div>
 
 <!-- ========================================== -->
-<!-- 2. PROFILE SETUP SCREEN (初回ログイン時のみ表示) -->
+<!-- 2. PROFILE SETUP SCREEN (初回のみ) -->
 <!-- ========================================== -->
 <div id="profile-setup-screen" class="min-h-screen flex items-center justify-center px-4 hidden-screen">
     <div class="bg-white p-8 rounded-2xl border border-borderLight shadow-sm max-w-md w-full space-y-6">
         <div>
-            <h2 class="text-xl font-bold text-textMain">🏎️ ドライバープロフィールの設定</h2>
-            <p class="text-sm text-textSub mt-1">初回ログインのため、あなたの情報を教えてください。</p>
+            <h2 class="text-xl font-bold text-textMain">🏎️ 初期セットアップ</h2>
+            <p class="text-sm text-textSub mt-1">初期データを生成します。</p>
         </div>
-
         <div class="space-y-4">
             <div>
                 <label class="block text-xs font-bold text-textSub uppercase mb-1">ドライバーネーム</label>
-                <input type="text" id="setup-name" placeholder="例: ひろ" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
+                <input type="text" id="setup-name" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
             </div>
             <div>
-                <label class="block text-xs font-bold text-textSub uppercase mb-1">ターゲット（志望校・学部）</label>
-                <input type="text" id="setup-target" placeholder="例: 情報データ科学部 / 工学部 a方式" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
+                <label class="block text-xs font-bold text-textSub uppercase mb-1">ターゲット</label>
+                <input type="text" id="setup-target" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
             </div>
             <button onclick="handleProfileSubmit()" class="w-full bg-accentBlue text-white font-bold py-2.5 rounded-xl text-sm hover:bg-blue-600 transition-colors">
-                セットアップを完了して cockpit へ
+                初期データをロードして開始
             </button>
         </div>
     </div>
 </div>
 
 <!-- ========================================== -->
-<!-- 3. MAIN DASHBOARD (メイン画面) -->
+<!-- 3. MAIN APP INTERFACE -->
 <!-- ========================================== -->
 <div id="main-dashboard" class="hidden-screen">
-    <header class="bg-white border-b border-borderLight sticky top-0 z-50 shadow-sm">
+    <!-- GLOBAL HEADER -->
+    <header class="bg-white border-b border-borderLight sticky top-0 z-50 shadow-xs">
         <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center">
             <div>
-                <h1 class="text-2xl font-black text-textMain tracking-tight">🏁 長崎大学 フルアップデート計画</h1>
-                <p class="text-sm text-textSub mt-1" id="userTargetDisplay">Target: ロード中...</p>
+                <h1 class="text-xl font-black text-textMain tracking-tight">🏁 長崎大学 フルアップデート計画</h1>
+                <p class="text-xs text-textSub mt-0.5" id="userTargetDisplay">Target: --</p>
             </div>
-            <div class="mt-4 sm:mt-0 flex items-center space-x-4">
+            <div class="mt-4 sm:mt-0 flex items-center space-x-6">
                 <div class="text-right">
-                    <span class="block text-xs text-textSub font-bold uppercase tracking-wider">Driver</span>
-                    <span class="block text-lg font-bold text-accentBlue" id="userNameDisplay">ロード中...</span>
+                    <span class="block text-[10px] text-textSub font-bold tracking-wider">Driver</span>
+                    <span class="block text-md font-bold text-accentBlue" id="userNameDisplay">--</span>
                 </div>
-                <button onclick="handleLogout()" class="text-xs bg-cardBg text-textSub hover:bg-red-50 hover:text-red-500 px-3 py-1.5 rounded-lg border border-borderLight font-medium transition-colors">
-                    ログアウト
-                </button>
+                <!-- App Navigation Tabs -->
+                <nav class="flex space-x-2 border-l pl-4 border-borderLight">
+                    <button id="nav-cockpit" onclick="switchView('cockpit')" class="px-3 py-1.5 border-b-2 border-transparent text-sm font-bold text-textMain tab-active">🏎️ Cockpit</button>
+                    <button id="nav-garage" onclick="switchView('garage')" class="px-3 py-1.5 border-b-2 border-transparent text-sm font-bold text-textSub">🛠️ Garage</button>
+                </nav>
+                <button onclick="handleLogout()" class="text-xs bg-cardBg text-textSub hover:text-red-500 px-2.5 py-1.5 rounded-lg border border-borderLight transition-colors">Logout</button>
             </div>
         </div>
     </header>
 
-    <main class="max-w-6xl mx-auto px-4 py-8 space-y-12">
-        <!-- グラフエリア -->
-        <section id="overview">
-            <div class="mb-4">
-                <h2 class="text-xl font-bold text-textMain">📊 本日の残り勉強時間（バーンダウン）</h2>
-            </div>
+    <!-- VIEWS CONTAINER -->
+    <main class="max-w-6xl mx-auto px-4 py-8">
+        
+        <!-- ========================================== -->
+        <!-- VIEW: COCKPIT (日々のダッシュボード) -->
+        <!-- ========================================== -->
+        <div id="view-cockpit" class="space-y-12">
+            <!-- MACRO TOTAL PROGRESS BAR -->
+            <section class="bg-white p-6 rounded-2xl border border-borderLight shadow-sm space-y-3">
+                <div class="flex justify-between items-end">
+                    <div>
+                        <h3 class="text-sm font-bold text-textMain" id="macroTitleDisplay">🎯 夏季シーズン目標総走行時間</h3>
+                        <p class="text-xs text-textSub mt-0.5" id="macroPeriodDisplay">期間: --</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-2xl font-black text-textMain" id="macroProgressText">0 / 300</span>
+                        <span class="text-xs text-textSub font-bold ml-1">Hours</span>
+                    </div>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                    <div id="macroProgressBar" class="bg-gradient-to-r from-accentBlue to-indigo-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </section>
+
+            <!-- DAILY OVERVIEW & CHART -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="col-span-1 lg:col-span-2 bg-white rounded-2xl p-6 border border-borderLight shadow-sm">
-                    <h3 class="text-md font-bold text-textSub mb-4 text-center" id="chartTitle">本日のリソース配分</h3>
-                    <div class="chart-container">
-                        <canvas id="burndownChart"></canvas>
-                    </div>
+                    <h3 class="text-sm font-bold text-textSub mb-4 text-center" id="chartTitle">本日の残り勉強リソース</h3>
+                    <div class="chart-container"><canvas id="burndownChart"></canvas></div>
                 </div>
                 <div class="col-span-1 flex flex-col gap-4">
-                    <div class="bg-cardBg rounded-2xl p-6 border border-borderLight">
-                        <span class="text-xs font-bold text-textSub uppercase">Remaining Time</span>
-                        <div class="text-4xl font-black text-textMain mt-1" id="totalRemainingText">0<span class="text-lg font-bold text-textSub ml-1">Hours</span></div>
+                    <div class="bg-cardBg rounded-2xl p-5 border border-borderLight">
+                        <span class="text-xs font-bold text-textSub uppercase">Today's Remaining</span>
+                        <div class="text-3xl font-black text-textMain mt-1" id="totalRemainingText">0<span class="text-sm font-bold text-textSub ml-1">h</span></div>
                     </div>
-                    <div class="bg-cardBg rounded-2xl p-6 border border-borderLight">
+                    <div class="bg-cardBg rounded-2xl p-5 border border-borderLight">
                         <span class="text-xs font-bold text-textSub uppercase">Today's Progress</span>
-                        <div class="text-3xl font-black text-accentBlue mt-1" id="progressPercentage">0%</div>
-                        <div class="mt-2 w-full bg-gray-200 rounded-full h-2">
-                            <div id="progressBar" class="bg-accentBlue h-2 rounded-full" style="width: 0%"></div>
-                        </div>
+                        <div class="text-2xl font-black text-accentOrange mt-1" id="progressPercentage">0%</div>
+                        <div class="mt-2 w-full bg-gray-200 rounded-full h-1.5"><div id="progressBar" class="bg-accentOrange h-1.5 rounded-full" style="width: 0%"></div></div>
+                    </div>
+                    <!-- Dynamic Sector Goals Quick View -->
+                    <div class="bg-white p-4 rounded-2xl border border-borderLight flex-grow space-y-2 max-h-[160px] overflow-y-auto">
+                        <span class="text-xs font-bold text-textSub uppercase block border-b pb-1">🛠️ Sector Targets</span>
+                        <div id="cockpitSectorsList" class="text-xs text-textMain space-y-1"></div>
                     </div>
                 </div>
             </div>
-        </section>
 
-        <!-- タイムライン & 計画追加 -->
-        <section id="telemetry">
-            <div class="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h2 class="text-xl font-bold text-textMain">⏱️ Daily Telemetry</h2>
-                    <p class="text-sm text-textSub">日付を選択して計画をセット・消化します。</p>
-                </div>
-                <div class="flex items-center gap-2">
-                    <label class="text-sm font-bold text-textSub">表示日:</label>
-                    <input type="date" id="currentDateInput" onchange="loadDateData()" class="px-3 py-2 rounded-xl border border-borderLight bg-white font-bold text-sm text-textMain">
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                <div class="space-y-4 col-span-1">
-                    <div class="bg-white p-5 rounded-2xl border border-borderLight shadow-sm space-y-3">
-                        <h4 class="text-sm font-bold text-textMain">📋 テンプレートを適用</h4>
-                        <div class="grid grid-cols-2 gap-2 pt-1">
-                            <button onclick="applyTemplate('phase1')" class="px-3 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-accentBlue rounded-xl font-bold text-xs transition-colors">フェーズ1 (学校)</button>
-                            <button onclick="applyTemplate('phase2')" class="px-3 py-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-accentOrange rounded-xl font-bold text-xs transition-colors">フェーズ2 (完全休日)</button>
-                        </div>
+            <!-- DAILY TASKS TIMELINE -->
+            <section class="bg-white rounded-2xl border border-borderLight p-6 shadow-sm">
+                <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-textMain">⏱️ 本日のタイムライン・テレメトリー</h2>
                     </div>
-
-                    <div class="bg-white p-5 rounded-2xl border border-borderLight shadow-sm space-y-4">
-                        <h4 class="text-sm font-bold text-textMain">🛠️ 個別計画の追加</h4>
-                        <div class="space-y-3">
-                            <div>
-                                <label class="block text-xs font-bold text-textSub mb-1">開始時間</label>
-                                <input type="text" id="inputTime" placeholder="例: 17:30" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-textSub mb-1">想定時間 (分)</label>
-                                <input type="number" id="inputDuration" placeholder="例: 90" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-textSub mb-1">対象セクター</label>
-                                <select id="inputSubject" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
-                                    <option value="math">数学</option>
-                                    <option value="physics">物理</option>
-                                    <option value="chem">化学</option>
-                                    <option value="eng">英語</option>
-                                    <option value="info">その他/情報</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-textSub mb-1">タスク詳細</label>
-                                <input type="text" id="inputTask" placeholder="例: セミナー力学基本問題" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
-                            </div>
-                            <button onclick="addTask()" class="w-full bg-textMain text-white font-bold py-2 rounded-xl text-sm hover:bg-slate-800 transition-colors">登録</button>
-                        </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button onclick="applyTemplate('phase1')" class="px-2.5 py-1 bg-blue-50 text-accentBlue border border-blue-200 hover:bg-blue-100 rounded-lg text-xs font-bold">Template: フェーズ1</button>
+                        <button onclick="applyTemplate('phase2')" class="px-2.5 py-1 bg-orange-50 text-accentOrange border border-orange-200 hover:bg-orange-100 rounded-lg text-xs font-bold">Template: フェーズ2</button>
+                        <input type="date" id="currentDateInput" onchange="loadDateData()" class="ml-2 px-2 py-1 rounded-lg border border-borderLight text-xs font-bold text-textMain bg-baseBg">
                     </div>
                 </div>
 
-                <div class="col-span-1 lg:col-span-2 bg-white rounded-2xl border border-borderLight p-6 shadow-sm min-h-[300px]">
-                    <h3 class="text-md font-bold text-textMain mb-4 border-b pb-2">📋 本日の指示書</h3>
-                    <div id="timelineContainer" class="space-y-4"></div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                    <div class="bg-cardBg p-4 rounded-xl border border-borderLight space-y-3 col-span-1">
+                        <span class="text-xs font-bold text-textMain block">⚡ 予定のクイック追加</span>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <input type="text" id="inputTime" placeholder="時間 (17:30)" class="p-2 rounded border bg-white">
+                            <input type="number" id="inputDuration" placeholder="分数 (90)" class="p-2 rounded border bg-white">
+                            <select id="inputSubject" class="p-2 rounded border bg-white col-span-2">
+                                <option value="math">数学</option><option value="physics">物理</option><option value="chem">化学</option><option value="eng">英語</option><option value="info">その他</option>
+                            </select>
+                            <input type="text" id="inputTask" placeholder="タスク内容" class="p-2 rounded border bg-white col-span-2">
+                        </div>
+                        <button onclick="addTask()" class="w-full bg-textMain text-white font-bold py-1.5 rounded-lg text-xs hover:bg-slate-800">追加して送信</button>
+                    </div>
+                    <div id="timelineContainer" class="col-span-1 lg:col-span-2 space-y-3 min-h-[200px]"></div>
+                </div>
+            </section>
+
+            <!-- MILESTONES & SOCIAL PADDOCK -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Milestones Quick Tracker -->
+                <section class="bg-white p-6 rounded-2xl border border-borderLight shadow-sm space-y-4">
+                    <h3 class="text-md font-bold text-textMain border-b pb-2">🚩 マイルストーン・チェックポイント</h3>
+                    <div id="cockpitMilestoneList" class="space-y-3"></div>
+                </section>
+                <!-- Paddock -->
+                <section class="bg-white p-6 rounded-2xl border border-borderLight shadow-sm space-y-4">
+                    <h3 class="text-md font-bold text-textMain border-b pb-2">🏁 Paddock (ライバルのライブ進捗)</h3>
+                    <div id="paddockContainer" class="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto"></div>
+                </section>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- VIEW: GARAGE (計画の編集・管理画面) -->
+        <!-- ========================================== -->
+        <div id="view-garage" class="hidden-screen space-y-8">
+            <div class="border-b pb-2">
+                <h2 class="text-xl font-bold text-textMain">🛠️ マシン・ガレージ（戦略設定・編集）</h2>
+                <p class="text-xs text-textSub mt-0.5">夏休み全体の目標値、戦略テキスト、テンプレートルーティンをチューニングします。</p>
+            </div>
+
+            <!-- 1. MACRO SETTING FORM -->
+            <div class="bg-white p-6 rounded-2xl border border-borderLight shadow-sm space-y-4">
+                <h3 class="text-sm font-bold text-textMain border-b pb-1">📊 全体目標・期間セッティング</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs">
+                    <div class="sm:col-span-2">
+                        <label class="block font-bold text-textSub mb-1">計画タイトル</label>
+                        <input type="text" id="garage-title" class="w-full p-2 border rounded-lg bg-baseBg font-bold text-textMain">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-textSub mb-1">総目標走行時間 (時間)</label>
+                        <input type="number" id="garage-target-hours" class="w-full p-2 border rounded-lg bg-baseBg font-bold text-textMain">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-textSub mb-1">現在の累計消化時間 (時間)</label>
+                        <input type="number" step="0.1" id="garage-completed-hours" class="w-full p-2 border rounded-lg bg-baseBg font-bold text-textMain">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-textSub mb-1">開始日</label>
+                        <input type="date" id="garage-start-date" class="w-full p-2 border rounded-lg bg-baseBg text-textMain">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-textSub mb-1">終了日</label>
+                        <input type="date" id="garage-end-date" class="w-full p-2 border rounded-lg bg-baseBg text-textMain">
+                    </div>
                 </div>
             </div>
-        </section>
 
-        <!-- パドック共有 -->
-        <section id="padock" class="bg-white rounded-2xl border border-borderLight p-6 shadow-sm">
-            <div class="mb-4">
-                <h2 class="text-xl font-bold text-textMain flex items-center gap-2">🏁 Paddock (仲間のリアルタイム進捗)</h2>
+            <!-- 2. SECTOR STRATEGY TEXTAREAS -->
+            <div class="bg-white p-6 rounded-2xl border border-borderLight shadow-sm space-y-4">
+                <h3 class="text-sm font-bold text-textMain border-b pb-1">🛠️ セクター別アップデート目標テキスト（箇条書き改行区切り）</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div>
+                        <label class="block font-bold text-accentBlue mb-1">【数学】目標戦略</label>
+                        <textarea id="garage-sector-math" rows="4" class="w-full p-2 border rounded-lg bg-baseBg font-medium text-textMain leading-relaxed"></textarea>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-accentOrange mb-1">【物理】目標戦略</label>
+                        <textarea id="garage-sector-physics" rows="4" class="w-full p-2 border rounded-lg bg-baseBg font-medium text-textMain leading-relaxed"></textarea>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-green-600 mb-1">【化学】目標戦略</label>
+                        <textarea id="garage-sector-chem" rows="4" class="w-full p-2 border rounded-lg bg-baseBg font-medium text-textMain leading-relaxed"></textarea>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-purple-600 mb-1">【英語】目標戦略</label>
+                        <textarea id="garage-sector-eng" rows="4" class="w-full p-2 border rounded-lg bg-baseBg font-medium text-textMain leading-relaxed"></textarea>
+                    </div>
+                </div>
             </div>
-            <div id="paddockContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
-        </section>
+
+            <!-- 3. MILESTONE STRATEGY EDITOR -->
+            <div class="bg-white p-6 rounded-2xl border border-borderLight shadow-sm space-y-4">
+                <h3 class="text-sm font-bold text-textMain border-b pb-1">🚩 マイルストーン編集</h3>
+                <div id="garageMilestoneContainer" class="space-y-4 text-xs">
+                    <!-- JSで動的にインプットボックスを生成 -->
+                </div>
+            </div>
+
+            <!-- SAVE BUTTON -->
+            <div class="flex justify-end">
+                <button onclick="saveMacroPlanFromGarage()" class="px-8 py-3 bg-accentBlue text-white font-black rounded-xl text-sm shadow-sm hover:bg-blue-600 transition-colors">
+                    🔧 ガレージセッティングをFirestoreに保存・適用する
+                </button>
+            </div>
+        </div>
     </main>
 </div>
 
 <!-- ========================================== -->
-<!-- 4. FIREBASE SDK & LOGIC -->
+<!-- 5. CORE JAVASCRIPT & FIREBASE INFRA -->
 <!-- ========================================== -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, doc, getDoc, setDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // 【重要】ご自身のConfigデータに差し替えてください
+    // -------------------------------------------------------------
+    // 【重要】ご自身のFirebaseプロジェクトのWebアプリ設定値に書き換えてください
+    // -------------------------------------------------------------
     // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyDam0BRv-0636AFeXaHV3HQW6Dq2nGX8fs",
@@ -228,7 +301,6 @@ const firebaseConfig = {
   appId: "1:109550426134:web:b23dbcb349e1e6ea4a7d37",
   measurementId: "G-JJWDFKG1HD"
 };
-
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
@@ -237,34 +309,55 @@ const firebaseConfig = {
     let currentUser = null;
     let currentSelectedDate = '2026-07-21';
     let burndownChart = null;
+    
+    // データステート
     let currentDayTasks = [];
+    let macroPlanData = {};
 
     const subjectMeta = {
         math: { name: '数学', color: '#3b82f6', bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-accentBlue' },
         physics: { name: '物理', color: '#f97316', bg: 'bg-orange-50', border: 'border-orange-100', text: 'text-accentOrange' },
         chem: { name: '化学', color: '#22c55e', bg: 'bg-green-50', border: 'border-green-100', text: 'text-green-600' },
         eng: { name: '英語', color: '#a855f7', bg: 'bg-purple-50', border: 'border-purple-100', text: 'text-purple-600' },
-        info: { name: 'その他/情報', color: '#64748b', bg: 'bg-slate-50', border: 'border-slate-100', text: 'text-textSub' }
+        info: { name: 'その他', color: '#64748b', bg: 'bg-slate-50', border: 'border-slate-100', text: 'text-textSub' }
     };
 
-    // 認証監視
+    // 添付資料を完全再現した初期デフォルトマクロ計画データ
+    const defaultMacroPlan = {
+        title: "夏季フルアップデート計画",
+        totalTargetHours: 300,
+        completedHours: 0,
+        startDate: "2026-07-21",
+        endDate: "2026-08-17",
+        sectors: {
+            math: "数III: 青チャート基本例題「極限」「微分」「積分（計算）」をコンプリート。\n弱点補修: 「ベクトル」「軌跡と方程式」「確率」「統計」の基本例題を並行して潰す。",
+            physics: "力学: 7月末までにセミナー基本問題を完璧に。\n熱力学: 8月第1週で処理。\n電磁気: 8月のお盆明けまでに電場・磁場・回路の基礎をインストール。",
+            chem: "理論化学: 8月上旬までにエクセル化学の計算（電池・電気分解・平衡まで）を完了。\n有機化学: 8月中旬から全開で突っ込む。脂肪族・芳香族の反応経路暗記と基本問題。",
+            eng: "長文＆単語: 1日1題の長文読解（ペース維持）＋自作アプリでの単語テスト。"
+        },
+        milestones: [
+            { id: 1, date: "2026-07-31", title: "Checkpoint 1", content: "数学:数III微分突入/ベクトル完了 | 物理:力学全範囲基本完了 | 化学:理論完了(酸・塩基・酸化還元まで)", done: false },
+            { id: 2, date: "2026-08-07", title: "Checkpoint 2", content: "数学:数III積分突入/軌跡・確率完了 | 物理:熱力学完了、電磁気へシフト | 化学:理論全範囲完了、有機へシフト", done: false },
+            { id: 3, date: "2026-08-17", title: "Final Checkpoint", content: "数学:数III基本例題一巡/弱点一巡完了 | 物理:電磁気の電場・直流回路まで完了 | 化学:有機の基本完了", done: false }
+        ]
+    };
+
+    // 認証状態の監視
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             currentUser = user;
             document.getElementById('auth-screen').classList.add('hidden-screen');
 
-            // ユーザープロフィールチェック
             const userDocRef = doc(db, "users", user.uid);
             const userDoc = await getDoc(userDocRef);
 
             if (userDoc.exists()) {
-                // 登録済みならダッシュボード展開
+                await loadMacroPlan();
                 showDashboard(userDoc.data());
             } else {
-                // 未登録（初回）ならプロフィールセットアップ画面を表示
                 document.getElementById('profile-setup-screen').classList.remove('hidden-screen');
-                // Googleアカウントの登録名をデフォルト値としてセットしておく
-                document.getElementById('setup-name').value = user.displayName || "";
+                document.getElementById('setup-name').value = user.displayName || "ひろ";
+                document.getElementById('setup-target').value = "長崎大学 情報データ科学部";
             }
         } else {
             currentUser = null;
@@ -274,30 +367,50 @@ const firebaseConfig = {
         }
     });
 
-    // Googleログイン処理
     window.handleGoogleLogin = async () => {
-        try {
-            await signInWithPopup(auth, provider);
-        } catch (error) {
-            alert(`ログインエラー: ${error.message}`);
-        }
+        try { await signInWithPopup(auth, provider); } catch (e) { alert(e.message); }
     };
 
-    // 初回プロフィール登録処理
     window.handleProfileSubmit = async () => {
         const name = document.getElementById('setup-name').value.trim();
         const target = document.getElementById('setup-target').value.trim();
-
-        if (!name || !target) return alert('ネームとターゲットを両方入力してください。');
+        if (!name || !target) return alert('全項目入力してください。');
 
         const userData = { name, target };
         await setDoc(doc(db, "users", currentUser.uid), userData);
         
+        // 初回ログイン時は添付データをFirestoreへ初期投入
+        await setDoc(doc(db, `users/${currentUser.uid}/macroPlan/current`), defaultMacroPlan);
+        
         document.getElementById('profile-setup-screen').classList.add('hidden-screen');
+        await loadMacroPlan();
         showDashboard(userData);
     };
 
-    // ダッシュボード起動
+    window.handleLogout = () => { if (confirm('ログアウトしますか？')) signOut(auth); };
+
+    // 画面切り替え（SPAタブ制御）
+    window.switchView = (viewName) => {
+        const cView = document.getElementById('view-cockpit');
+        const gView = document.getElementById('view-garage');
+        const cNav = document.getElementById('nav-cockpit');
+        const gNav = document.getElementById('nav-garage');
+
+        if(viewName === 'cockpit') {
+            cView.classList.remove('hidden-screen');
+            gView.classList.add('hidden-screen');
+            cNav.className = "px-3 py-1.5 border-b-2 text-sm font-bold text-textMain tab-active";
+            gNav.className = "px-3 py-1.5 border-b-2 border-transparent text-sm font-bold text-textSub";
+            renderTimeline(); // Cockpit表示のたびに再描画
+        } else {
+            cView.classList.add('hidden-screen');
+            gView.classList.remove('hidden-screen');
+            gNav.className = "px-3 py-1.5 border-b-2 text-sm font-bold text-textMain tab-active";
+            cNav.className = "px-3 py-1.5 border-b-2 border-transparent text-sm font-bold text-textSub";
+            syncGarageForm(); // ガレージ画面のフォームにデータを同期
+        }
+    };
+
     function showDashboard(userData) {
         document.getElementById('main-dashboard').classList.remove('hidden-screen');
         document.getElementById('userNameDisplay').innerText = userData.name;
@@ -309,15 +422,119 @@ const firebaseConfig = {
         listenToPaddock();
     }
 
-    window.handleLogout = () => {
-        if (confirm('ログアウトしますか？')) signOut(auth);
+    // マクロ計画ドキュメントの読み込み
+    async function loadMacroPlan() {
+        const macroDoc = await getDoc(doc(db, `users/${currentUser.uid}/macroPlan/current`));
+        if(macroDoc.exists()){
+            macroPlanData = macroDoc.data();
+        } else {
+            macroPlanData = defaultMacroPlan;
+        }
+        renderMacroDOM();
+    }
+
+    // マクロUIパーツのレンダリング
+    function renderMacroDOM() {
+        document.getElementById('macroTitleDisplay').innerText = `🎯 ${macroPlanData.title || '夏期目標'}`;
+        document.getElementById('macroPeriodDisplay').innerText = `期間: ${macroPlanData.startDate} 〜 ${macroPlanData.endDate}`;
+        
+        const targetHours = macroPlanData.totalTargetHours || 300;
+        const compHours = parseFloat(macroPlanData.completedHours || 0).toFixed(1);
+        document.getElementById('macroProgressText').innerText = `${compHours} / ${targetHours}`;
+
+        const progressPercent = Math.min(100, Math.round((compHours / targetHours) * 100));
+        document.getElementById('macroProgressBar').style.width = `${progressPercent}%`;
+
+        // Cockpit用のセクターリスト反映
+        const sContainer = document.getElementById('cockpitSectorsList');
+        sContainer.innerHTML = '';
+        Object.keys(macroPlanData.sectors || {}).forEach(k => {
+            const lines = macroPlanData.sectors[k].split('\n').map(l => `• ${l}`).join('<br>');
+            sContainer.innerHTML += `<div class="mb-2"><strong class="${subjectMeta[k].text}">【${subjectMeta[k].name}】</strong><p class="pl-2 bg-gray-50 rounded text-slate-600 mt-0.5">${lines}</p></div>`;
+        });
+
+        // Cockpit用のマイルストーン反映
+        const mContainer = document.getElementById('cockpitMilestoneList');
+        mContainer.innerHTML = '';
+        (macroPlanData.milestones || []).forEach((m, idx) => {
+            const isChecked = m.done ? 'checked' : '';
+            const doneStyle = m.done ? 'line-through opacity-40' : '';
+            mContainer.innerHTML += `
+                <div class="flex items-center justify-between p-2.5 border rounded-lg text-xs bg-baseBg">
+                    <div class="${doneStyle} flex-grow pr-2">
+                        <span class="font-bold text-textMain block">${m.title} (${m.date.split('-')[1]}/${m.date.split('-')[2]})</span>
+                        <span class="text-textSub mt-0.5 block">${m.content}</span>
+                    </div>
+                    <input type="checkbox" ${isChecked} onclick="toggleMilestone(${idx})" class="w-4 h-4 rounded text-accentBlue cursor-pointer">
+                </div>
+            `;
+        });
+    }
+
+    // ガレージ入力フォームへの同期
+    function syncGarageForm() {
+        document.getElementById('garage-title').value = macroPlanData.title || '';
+        document.getElementById('garage-target-hours').value = macroPlanData.totalTargetHours || 300;
+        document.getElementById('garage-completed-hours').value = macroPlanData.completedHours || 0;
+        document.getElementById('garage-start-date').value = macroPlanData.startDate || '';
+        document.getElementById('garage-end-date').value = macroPlanData.endDate || '';
+
+        document.getElementById('garage-sector-math').value = macroPlanData.sectors?.math || '';
+        document.getElementById('garage-sector-physics').value = macroPlanData.sectors?.physics || '';
+        document.getElementById('garage-sector-chem').value = macroPlanData.sectors?.chem || '';
+        document.getElementById('garage-sector-eng').value = macroPlanData.sectors?.eng || '';
+
+        const mEditor = document.getElementById('garageMilestoneContainer');
+        mEditor.innerHTML = '';
+        (macroPlanData.milestones || []).forEach((m, idx) => {
+            mEditor.innerHTML += `
+                <div class="p-3 border rounded-lg bg-baseBg space-y-2">
+                    <div class="flex gap-2">
+                        <input type="text" id="g-m-title-${idx}" value="${m.title}" class="font-bold p-1 border rounded w-1/3">
+                        <input type="date" id="g-m-date-${idx}" value="${m.date}" class="p-1 border rounded w-1/3">
+                    </div>
+                    <input type="text" id="g-m-content-${idx}" value="${m.content}" class="w-full p-1.5 border rounded">
+                </div>
+            `;
+        });
+    }
+
+    // ガレージデータの保存
+    window.saveMacroPlanFromGarage = async () => {
+        macroPlanData.title = document.getElementById('garage-title').value.trim();
+        macroPlanData.totalTargetHours = parseInt(document.getElementById('garage-target-hours').value) || 300;
+        macroPlanData.completedHours = parseFloat(document.getElementById('garage-completed-hours').value) || 0;
+        macroPlanData.startDate = document.getElementById('garage-start-date').value;
+        macroPlanData.endDate = document.getElementById('garage-end-date').value;
+
+        macroPlanData.sectors.math = document.getElementById('garage-sector-math').value.trim();
+        macroPlanData.sectors.physics = document.getElementById('garage-sector-physics').value.trim();
+        macroPlanData.sectors.chem = document.getElementById('garage-sector-chem').value.trim();
+        macroPlanData.sectors.eng = document.getElementById('garage-sector-eng').value.trim();
+
+        (macroPlanData.milestones || []).forEach((m, idx) => {
+            m.title = document.getElementById(`g-m-title-${idx}`).value.trim();
+            m.date = document.getElementById(`g-m-date-${idx}`).value;
+            m.content = document.getElementById(`g-m-content-${idx}`).value.trim();
+        });
+
+        await setDoc(doc(db, `users/${currentUser.uid}/macroPlan/current`), macroPlanData);
+        renderMacroDOM();
+        alert('ガレージセッティングをFirestoreに保存・適用完了！');
+        switchView('cockpit');
     };
 
-    // 以下、Firestore連動のタイムライン・グラフコアロジック（仕様維持）
+    // マイルストーンのトグル
+    window.toggleMilestone = async (idx) => {
+        macroPlanData.milestones[idx].done = !macroPlanData.milestones[idx].done;
+        renderMacroDOM();
+        await setDoc(doc(db, `users/${currentUser.uid}/macroPlan/current`), macroPlanData);
+    };
+
+    // 日付データの取得
     window.loadDateData = async () => {
         currentSelectedDate = document.getElementById('currentDateInput').value;
         if (!currentUser) return;
-
         const planDoc = await getDoc(doc(db, `users/${currentUser.uid}/dailyPlans/${currentSelectedDate}`));
         currentDayTasks = planDoc.exists() ? (planDoc.data().tasks || []) : [];
         renderTimeline();
@@ -328,43 +545,36 @@ const firebaseConfig = {
         container.innerHTML = '';
 
         if (currentDayTasks.length === 0) {
-            container.innerHTML = `<div class="text-center py-12 text-sm text-textSub">この日の計画はまだ白紙です。テンプレートを適用するか予定を追加してください。</div>`;
+            container.innerHTML = `<div class="text-center py-8 text-xs text-textSub">この日のタイムラインは白紙です。</div>`;
             updateChartAndStats(0, 0, {});
             return;
         }
 
         currentDayTasks.sort((a, b) => a.time.localeCompare(b.time));
-
-        let totalMinutes = 0;
-        let completedMinutes = 0;
+        let totalMinutes = 0, completedMinutes = 0;
         let subjectSummary = { math: 0, physics: 0, chem: 0, eng: 0, info: 0 };
 
         currentDayTasks.forEach(task => {
             totalMinutes += task.duration;
-            if (task.done) {
-                completedMinutes += task.duration;
-            } else {
-                subjectSummary[task.subject] += task.duration;
-            }
+            if (task.done) completedMinutes += task.duration;
+            else subjectSummary[task.subject] += task.duration;
 
             const meta = subjectMeta[task.subject];
             const block = document.createElement('div');
-            block.className = `flex gap-4 items-start p-4 border rounded-xl bg-white border-borderLight shadow-xs ${task.done ? 'task-done' : ''}`;
+            block.className = `flex gap-3 items-start p-3 border rounded-xl bg-white border-borderLight text-xs ${task.done ? 'task-done' : ''}`;
             block.innerHTML = `
-                <div class="w-16 text-right shrink-0 mt-0.5">
-                    <span class="text-sm font-black text-textMain block">${task.time}</span>
-                    <span class="text-xs text-textSub block font-bold">${task.duration}分</span>
+                <div class="w-12 text-right shrink-0 font-bold">
+                    <span class="block text-textMain">${task.time}</span>
+                    <span class="block text-textSub text-[10px]">${task.duration}分</span>
                 </div>
                 <div class="flex-grow">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${meta.bg} ${meta.text}">${meta.name}</span>
-                        <button onclick="deleteTask(${task.id})" class="text-xs text-gray-300 hover:text-red-500 transition-colors font-medium">削除</button>
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold tracking-wider px-1.5 py-0.5 rounded ${meta.bg} ${meta.text}">${meta.name}</span>
+                        <button onclick="deleteTask(${task.id})" class="text-[10px] text-gray-300 hover:text-red-500 font-medium">削除</button>
                     </div>
-                    <p class="text-sm text-textMain mt-1.5 font-medium">${task.task}</p>
+                    <p class="text-textMain mt-1 font-medium">${task.task}</p>
                 </div>
-                <div class="flex items-center h-full my-auto pl-2">
-                    <input type="checkbox" ${task.done ? 'checked' : ''} onclick="toggleTask(${task.id})" class="w-5 h-5 rounded text-accentBlue focus:ring-accentBlue border-gray-300 cursor-pointer scale-110">
-                </div>
+                <input type="checkbox" ${task.done ? 'checked' : ''} onclick="toggleTask(${task.id})" class="w-4 h-4 rounded text-accentBlue cursor-pointer mt-1">
             `;
             container.appendChild(block);
         });
@@ -374,19 +584,14 @@ const firebaseConfig = {
 
     async function updateChartAndStats(total, completed, summary) {
         const remaining = total - completed;
-        const rHours = Math.floor(remaining / 60);
-        const rMins = remaining % 60;
-        document.getElementById('totalRemainingText').innerHTML = `${rHours}<span class="text-lg font-bold text-textSub ml-1">h ${rMins}m</span>`;
+        document.getElementById('totalRemainingText').innerHTML = `${Math.floor(remaining / 60)}<span class="text-xs font-bold text-textSub ml-0.5">h ${remaining % 60}m</span>`;
 
         const progressPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
         document.getElementById('progressPercentage').innerText = `${progressPercent}%`;
         document.getElementById('progressBar').style.width = `${progressPercent}%`;
-        document.getElementById('chartTitle').innerText = `${currentSelectedDate} の残り勉強リソース`;
+        document.getElementById('chartTitle').innerText = `${currentSelectedDate} の残りリソース`;
 
-        const labels = [];
-        const dataValues = [];
-        const backgroundColors = [];
-
+        const labels = [], dataValues = [], backgroundColors = [];
         Object.keys(summary).forEach(key => {
             if (summary[key] > 0) {
                 labels.push(`${subjectMeta[key].name} (${(summary[key]/60).toFixed(1)}h)`);
@@ -406,25 +611,45 @@ const firebaseConfig = {
         burndownChart.data.datasets[0].backgroundColor = backgroundColors;
         burndownChart.update();
 
-        if (currentUser) {
+        // 共有パドック用ステータス更新
+        if (currentUser && macroPlanData.title) {
             const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-            if(userDoc.exists()) {
-                await setDoc(doc(db, "publicStatus", currentUser.uid), {
-                    name: userDoc.data().name,
-                    target: userDoc.data().target,
-                    date: currentSelectedDate,
-                    progress: progressPercent,
-                    remainingHours: (remaining / 60).toFixed(1),
-                    updatedAt: Date.now()
-                });
-            }
+            await setDoc(doc(db, "publicStatus", currentUser.uid), {
+                name: userDoc.data().name,
+                target: userDoc.data().target,
+                date: currentSelectedDate,
+                progress: progressPercent,
+                remainingHours: (remaining / 60).toFixed(1),
+                updatedAt: Date.now()
+            });
         }
     }
 
+    // 日次タスク用アクション
     window.toggleTask = async (id) => {
-        currentDayTasks = currentDayTasks.map(t => t.id === id ? { ...t, done: !t.done } : t);
+        let taskStateChanged = false;
+        let deltaMinutes = 0;
+
+        currentDayTasks = currentDayTasks.map(t => {
+            if (t.id === id) {
+                taskStateChanged = true;
+                // チェックされたらマクロ累積を増やす、外されたら減らす
+                deltaMinutes = t.done ? -t.duration : t.duration;
+                return { ...t, done: !t.done };
+            }
+            return t;
+        });
+
         renderTimeline();
-        await saveToFirestore();
+        await setDoc(doc(db, `users/${currentUser.uid}/dailyPlans/${currentSelectedDate}`), { tasks: currentDayTasks });
+
+        // マクロ全体の総累計時間をFirestore側で即時インクリメント計算して保存
+        if (taskStateChanged) {
+            const currentHours = parseFloat(macroPlanData.completedHours || 0);
+            macroPlanData.completedHours = Math.max(0, currentHours + (deltaMinutes / 60));
+            await setDoc(doc(db, `users/${currentUser.uid}/macroPlan/current`), macroPlanData);
+            renderMacroDOM();
+        }
     };
 
     window.addTask = async () => {
@@ -437,7 +662,7 @@ const firebaseConfig = {
 
         currentDayTasks.push({ id: Date.now(), time, duration, subject, task: taskText, done: false });
         renderTimeline();
-        await saveToFirestore();
+        await setDoc(doc(db, `users/${currentUser.uid}/dailyPlans/${currentSelectedDate}`), { tasks: currentDayTasks });
 
         document.getElementById('inputTime').value = '';
         document.getElementById('inputDuration').value = '';
@@ -445,69 +670,69 @@ const firebaseConfig = {
     };
 
     window.deleteTask = async (id) => {
-        if (!confirm('このタスク計画を削除しますか？')) return;
+        if (!confirm('削除しますか？')) return;
+        const targetTask = currentDayTasks.find(t => t.id === id);
+        
+        // 完了済みタスクを削除する場合は、マクロの累積時間からその分を引く
+        if (targetTask && targetTask.done) {
+            const currentHours = parseFloat(macroPlanData.completedHours || 0);
+            macroPlanData.completedHours = Math.max(0, currentHours - (targetTask.duration / 60));
+            await setDoc(doc(db, `users/${currentUser.uid}/macroPlan/current`), macroPlanData);
+            renderMacroDOM();
+        }
+
         currentDayTasks = currentDayTasks.filter(t => t.id !== id);
         renderTimeline();
-        await saveToFirestore();
+        await setDoc(doc(db, `users/${currentUser.uid}/dailyPlans/${currentSelectedDate}`), { tasks: currentDayTasks });
     };
 
+    // 添付テキスト通りのフェーズ1＆2テンプレート展開
     window.applyTemplate = async (type) => {
-        if (!confirm('既存の計画を上書きしてテンプレートを適用しますか？')) return;
+        if (!confirm('この日の計画を上書きしてテンプレートを適用しますか？')) return;
         if (type === 'phase1') {
             currentDayTasks = [
-                { id: 1, time: '06:30', duration: 30, subject: 'info', task: '情報の基礎用語 or 公共の暗記 (Warm Up)', done: false },
-                { id: 2, time: '17:30', duration: 120, subject: 'math', task: '数III（極限）1.5h ＋ 弱点補修（ベクトル）0.5h', done: false },
-                { id: 3, time: '20:00', duration: 90, subject: 'physics', task: 'Geminiセッション ＋ セミナー力学（基礎）', done: false },
+                { id: 1, time: '06:30', duration: 30, subject: 'info', task: '情報の基礎用語 or 公共の暗記', done: false },
+                { id: 2, time: '17:30', duration: 120, subject: 'math', task: '数III（極限）1.5時間 ＋ 弱点補修（ベクトル）0.5時間', done: false },
+                { id: 3, time: '20:00', duration: 90, subject: 'physics', task: 'Geminiセッション ＋ セミナー力学（等加速度〜運動方程式）', done: false },
                 { id: 4, time: '21:30', duration: 90, subject: 'chem', task: 'エクセル理論化学（物質量・濃度など）', done: false }
             ];
         } else if (type === 'phase2') {
             currentDayTasks = [
                 { id: 5, time: '06:30', duration: 60, subject: 'eng', task: '長文読解1題 ＋ シャドーイング', done: false },
-                { id: 6, time: '09:00', duration: 180, subject: 'math', task: '数III（微積分）2h ＋ 弱点補修（日替わり）1h', done: false },
+                { id: 6, time: '09:00', duration: 180, subject: 'math', task: '数III（微積分）2時間 ＋ 弱点補修（軌跡・確率・統計）1時間', done: false },
                 { id: 7, time: '13:00', duration: 180, subject: 'physics', task: 'Geminiセッション ＋ セミナー基本問題', done: false },
                 { id: 8, time: '16:30', duration: 180, subject: 'chem', task: 'エクセル理論化学の完結 〜 有機化学へ突入', done: false },
-                { id: 9, time: '21:00', duration: 120, subject: 'info', task: 'エラー記録アプリでの完全再現テスト＋暗記モノ', done: false }
+                { id: 9, time: '21:00', duration: 120, subject: 'info', task: 'エラー再現テスト(1h) ＋ 共通テスト情報/公共/古文単語(1h)', done: false }
             ];
         }
         renderTimeline();
-        await saveToFirestore();
-    };
-
-    async function saveToFirestore() {
-        if (!currentUser) return;
         await setDoc(doc(db, `users/${currentUser.uid}/dailyPlans/${currentSelectedDate}`), { tasks: currentDayTasks });
-    }
+    };
 
     function listenToPaddock() {
         onSnapshot(collection(db, "publicStatus"), (snapshot) => {
             const container = document.getElementById('paddockContainer');
             container.innerHTML = '';
-
             snapshot.forEach((doc) => {
                 const data = doc.data();
                 if (doc.id !== currentUser.uid && data.updatedAt > Date.now() - 86400000) {
                     const card = document.createElement('div');
-                    card.className = "bg-cardBg border border-borderLight p-4 rounded-xl space-y-2";
+                    card.className = "bg-cardBg border border-borderLight p-3 rounded-xl flex justify-between items-center text-xs";
                     card.innerHTML = `
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <span class="text-sm font-black text-textMain block">${data.name}</span>
-                                <span class="text-[10px] text-textSub block truncate max-w-[150px]">${data.target || 'TARGET UNKNOWN'}</span>
-                            </div>
-                            <span class="text-xs bg-white border px-2 py-0.5 rounded-md font-bold text-textMain">${data.date.split('-')[1]}/${data.date.split('-')[2]}</span>
+                        <div>
+                            <span class="font-bold text-textMain block">${data.name} <span class="text-[10px] font-medium text-textSub">(${data.target})</span></span>
+                            <span class="text-[10px] text-textSub block">表示日: ${data.date} | 残り: ${data.remainingHours}h</span>
                         </div>
-                        <div class="pt-1">
-                            <div class="flex justify-between text-xs font-bold mb-1"><span class="text-textSub">消化進捗</span><span class="text-accentBlue">${data.progress}%</span></div>
-                            <div class="w-full bg-gray-200 rounded-full h-1.5"><div class="bg-accentBlue h-1.5 rounded-full" style="width: ${data.progress}%"></div></div>
+                        <div class="text-right">
+                            <span class="font-black text-accentBlue block">${data.progress}%</span>
+                            <div class="w-16 bg-gray-200 h-1 rounded-full mt-0.5"><div class="bg-accentBlue h-1 rounded-full" style="width: ${data.progress}%"></div></div>
                         </div>
-                        <span class="block text-[10px] text-right text-textSub font-medium">残り推定: ${data.remainingHours}h</span>
                     `;
                     container.appendChild(card);
                 }
             });
-
             if (container.innerHTML === '') {
-                container.innerHTML = `<p class="text-xs text-textSub col-span-full py-4 text-center">現在アクティブな他ドライバーはいません。孤高のデッドヒートです。 🏎️</p>`;
+                container.innerHTML = `<p class="text-[11px] text-textSub text-center py-2">パドックに他のドライバーはいません。孤高のデッドヒートです。🏎️</p>`;
             }
         });
     }
@@ -517,12 +742,12 @@ const firebaseConfig = {
         if (burndownChart) burndownChart.destroy();
         burndownChart = new Chart(ctx, {
             type: 'doughnut',
-            data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderWidth: 0, hoverOffset: 8 }] },
+            data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderWidth: 0, hoverOffset: 6 }] },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                cutout: '72%',
-                plugins: { legend: { position: 'right', labels: { font: { family: "'Noto Sans JP', sans-serif", size: 11, weight: 'bold' }, color: '#64748b', padding: 15 } } }
+                cutout: '74%',
+                plugins: { legend: { position: 'right', labels: { font: { family: "'Noto Sans JP', sans-serif", size: 10, weight: 'bold' }, color: '#64748b', padding: 10 } } }
             }
         });
     }
