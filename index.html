@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>長崎大学・24hフルアップデート計画 (Telemetry v3)</title>
+    <title>長崎大学・24hフルアップデート計画 (Clock Telemetry)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -29,7 +29,7 @@
     
     <style>
         body { background-color: #fcfbf9; color: #334155; -webkit-font-smoothing: antialiased; }
-        .chart-container { position: relative; width: 100%; max-width: 600px; margin: 0 auto; height: 35vh; max-height: 350px; }
+        .chart-container { position: relative; width: 100%; max-width: 600px; margin: 0 auto; height: 38vh; max-height: 380px; }
         .task-done { text-decoration: line-through; opacity: 0.4; background-color: #f1f5f9 !important; border-color: #cbd5e1 !important; }
         .hidden-screen { display: none !important; }
         .tab-active { border-color: #3b82f6; color: #3b82f6; font-weight: 900; }
@@ -43,10 +43,10 @@
 <div id="auth-screen" class="min-h-screen flex items-center justify-center px-4">
     <div class="bg-white p-8 rounded-2xl border border-borderLight shadow-sm max-w-md w-full text-center space-y-6">
         <div>
-            <h1 class="text-2xl font-black text-textMain tracking-tight">🏁 24h テレメトリー v3.0</h1>
+            <h1 class="text-2xl font-black text-textMain tracking-tight">🏁 24h 時計テレメトリー v3.5</h1>
             <p class="text-sm text-textSub mt-1">長崎大学 フルアップデート計画</p>
         </div>
-        <p class="text-xs text-textSub leading-relaxed">24時間のリソース配分を完全ビジュアル化する受験用戦略コックピットです。</p>
+        <p class="text-xs text-textSub leading-relaxed">一日のスケジュールを時計盤のようにビジュアル管理します。</p>
         <button onclick="handleGoogleLogin()" class="w-full flex items-center justify-center gap-3 bg-white border border-borderLight text-textMain font-bold py-3 px-4 rounded-xl text-sm shadow-xs hover:bg-gray-50 transition-colors">
             <svg class="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -122,7 +122,7 @@
                 <div class="col-span-1 lg:col-span-2 bg-white rounded-2xl p-6 border border-borderLight shadow-sm">
                     <div class="flex justify-between items-center mb-2">
                         <h3 class="text-sm font-bold text-textMain" id="chartTitle">本日の24時間リソース配分</h3>
-                        <span class="text-xs text-textSub font-medium">※タスク完了でグレーアウト（消化）します</span>
+                        <span class="text-xs text-textSub font-medium">※タスク完了でグラフの該当時間がグレーアウトします</span>
                     </div>
                     <div class="chart-container"><canvas id="burndownChart"></canvas></div>
                 </div>
@@ -240,7 +240,7 @@
                 </div>
             </div>
 
-            <!-- ★NEW★ 24HOUR TEMPLATE ALLOCATION TUNER -->
+            <!-- 24HOUR TEMPLATE ALLOCATION TUNER -->
             <div class="bg-white p-6 rounded-2xl border border-borderLight shadow-sm space-y-6">
                 <h3 class="text-sm font-bold text-textMain border-b pb-1">⏱️ 24時間テンプレート・アロケーション（分単位で調整）</h3>
                 <p class="text-xs text-textSub">1日は合計で**1440分**です。数値を変更するとリアルタイムに合計を計算します。</p>
@@ -307,9 +307,6 @@
     import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, doc, getDoc, setDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // -------------------------------------------------------------
-    // 【重要】ご自身のConfigデータに差し替えてください
-    // -------------------------------------------------------------
     const firebaseConfig = {
   apiKey: "AIzaSyDam0BRv-0636AFeXaHV3HQW6Dq2nGX8fs",
   authDomain: "kanri-d8a6c.firebaseapp.com",
@@ -319,6 +316,7 @@
   appId: "1:109550426134:web:b23dbcb349e1e6ea4a7d37",
   measurementId: "G-JJWDFKG1HD"
 };
+
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
@@ -330,11 +328,10 @@
     let currentDayTasks = [];
     let macroPlanData = {};
 
-    // 24時間リソース管理用のカラー＆メタ定義
     const subjectMeta = {
-        sleep: { name: '睡眠（冷却）', color: '#64748b', bg: 'bg-slate-100', border: 'border-slate-200', text: 'text-slate-500' },
-        life: { name: '生活（ピット作業）', color: '#94a3b8', bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-400' },
-        school: { name: '学校・拘束時間', color: '#cbd5e1', bg: 'bg-zinc-50', border: 'border-zinc-200', text: 'text-zinc-400' },
+        sleep: { name: '睡眠', color: '#64748b', bg: 'bg-slate-100', border: 'border-slate-200', text: 'text-slate-500' },
+        life: { name: '生活', color: '#94a3b8', bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-400' },
+        school: { name: '学校・移動', color: '#cbd5e1', bg: 'bg-zinc-50', border: 'border-zinc-200', text: 'text-zinc-400' },
         math: { name: '数学', color: '#3b82f6', bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-accentBlue' },
         physics: { name: '物理', color: '#f97316', bg: 'bg-orange-50', border: 'border-orange-100', text: 'text-accentOrange' },
         chem: { name: '化学', color: '#22c55e', bg: 'bg-green-50', border: 'border-green-100', text: 'text-green-600' },
@@ -342,17 +339,15 @@
         info: { name: '自由枠・その他', color: '#f43f5e', bg: 'bg-rose-50', border: 'border-rose-100', text: 'text-rose-500' }
     };
 
-    // ヒアリング内容を完全初期反映した24hアロケーションデフォルトデータ
     const defaultMacroPlan = {
         title: "夏季フルアップデート計画",
         totalTargetHours: 300,
         completedHours: 0,
         startDate: "2026-07-21",
         endDate: "2026-08-17",
-        // 各テンプレートの分単位の配分 (合計1440分)
         templates: {
-            phase1: { sleep: 420, life: 90, school: 600, math: 120, physics: 90, chem: 90, eng: 0, info: 30 }, // 平日：睡眠420分[cite: 2], 生活90分
-            phase2: { sleep: 420, life: 90, school: 0, math: 180, physics: 180, chem: 180, eng: 60, info: 210 } // 休日：睡眠420分[cite: 2], 生活90分, 勉強12h[cite: 2]
+            phase1: { sleep: 420, life: 90, school: 600, math: 120, physics: 90, chem: 90, eng: 0, info: 30 }, // 睡眠420分, 生活90分
+            phase2: { sleep: 420, life: 90, school: 0, math: 180, physics: 180, chem: 180, eng: 60, info: 210 } // 睡眠420分[cite: 2], 生活90分, 勉強12h[cite: 2]
         },
         milestones: [
             { id: 1, date: "2026-07-31", title: "Checkpoint 1", content: "数学:数III微分突入/ベクトル完了 | 物理:力学全範囲基本完了 | 化学:理論完了(酸・塩基・酸化還元まで)", done: false },
@@ -425,7 +420,6 @@
         document.getElementById('macroProgressText').innerText = `${compHours} / ${targetHours}`;
         document.getElementById('macroProgressBar').style.width = `${Math.min(100, Math.round((compHours / targetHours) * 100))}%`;
 
-        // Cockpitマイルストーン反映
         const mContainer = document.getElementById('cockpitMilestoneList');
         mContainer.innerHTML = '';
         (macroPlanData.milestones || []).forEach((m, idx) => {
@@ -463,14 +457,12 @@
         }
     };
 
-    // Garage同期 & 24時間バリデーション監視
     function syncGarageForm() {
         document.getElementById('garage-title').value = macroPlanData.title || '';
         document.getElementById('garage-target-hours').value = macroPlanData.totalTargetHours || 300;
         document.getElementById('garage-start-date').value = macroPlanData.startDate || '';
         document.getElementById('garage-end-date').value = macroPlanData.endDate || '';
 
-        // 各種テンプレート分数の流し込み
         const t1 = macroPlanData.templates.phase1;
         Object.keys(t1).forEach(k => document.getElementById(`t1-${k}`).value = t1[k]);
         const t2 = macroPlanData.templates.phase2;
@@ -492,7 +484,6 @@
         validate24h();
     }
 
-    // 24時間（1440分）リアルタイム計算バリデーター
     window.validate24h = () => {
         let isValid = true;
         ['phase1', 'phase2'].forEach(pId => {
@@ -537,11 +528,10 @@
 
         await setDoc(doc(db, `users/${currentUser.uid}/macroPlan/current`), macroPlanData);
         renderMacroDOM();
-        alert('ガレージ内の24hチューニング内容をFirestoreに保存・適用しました！');
+        alert('保存完了しました！');
         switchView('cockpit');
     };
 
-    // タイムライン処理
     window.loadDateData = async () => {
         currentSelectedDate = document.getElementById('currentDateInput').value;
         if (!currentUser) return;
@@ -550,13 +540,22 @@
         renderTimeline();
     };
 
+    // ★NEW★ 時間計算ヘルパーロジック (開始時間と分数から終了時間を割り出す)
+    function calculateEndTime(startTimeStr, durationMinutes) {
+        const [hours, minutes] = startTimeStr.split(':').map(Number);
+        const totalMinutes = hours * 60 + minutes + durationMinutes;
+        const endHours = Math.floor(totalMinutes / 60) % 24;
+        const endMinutes = totalMinutes % 60;
+        return `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
+    }
+
     function renderTimeline() {
         const container = document.getElementById('timelineContainer');
         container.innerHTML = '';
 
         if (currentDayTasks.length === 0) {
-            container.innerHTML = `<div class="text-center py-10 text-xs text-textSub">この日のリソース指示書は空です。上のボタンから24h枠を展開してください。</div>`;
-            update24hChartAndStats({});
+            container.innerHTML = `<div class="text-center py-10 text-xs text-textSub">この日のスケジュール枠は空です。</div>`;
+            update24hChartAndStats([]);
             return;
         }
 
@@ -564,11 +563,12 @@
         
         currentDayTasks.forEach(task => {
             const meta = subjectMeta[task.subject];
+            const endTime = calculateEndTime(task.time, task.duration);
             const block = document.createElement('div');
             block.className = `flex gap-3 items-start p-2.5 border rounded-xl bg-white border-borderLight text-xs ${task.done ? 'task-done' : ''}`;
             block.innerHTML = `
-                <div class="w-12 text-right shrink-0 font-bold mt-0.5">
-                    <span class="block text-textMain">${task.time}</span>
+                <div class="w-20 text-right shrink-0 font-bold mt-0.5">
+                    <span class="block text-textMain">${task.time}〜${endTime}</span>
                     <span class="block text-textSub text-[10px]">${task.duration}分</span>
                 </div>
                 <div class="flex-grow">
@@ -583,20 +583,14 @@
             container.appendChild(block);
         });
 
-        // 24時間分のパイデータを構築してグラフに渡す
-        let summaryChartData = {};
-        currentDayTasks.forEach(t => {
-            const key = t.done ? `done_${t.subject}` : t.subject;
-            summaryChartData[key] = (summaryChartData[key] || 0) + t.duration;
-        });
-        update24hChartAndStats(summaryChartData);
+        // 24時間分の予定をソートした状態でそのままグラフエンジンに渡す[cite: 1]
+        update24hChartAndStats(currentDayTasks);
     }
 
     window.toggleTask = async (id) => {
         let deltaMinutes = 0;
         currentDayTasks = currentDayTasks.map(t => {
             if (t.id === id) {
-                // 勉強科目(math, physics, chem, eng)のみマクロ総時間に加算減算
                 if(['math','physics','chem','eng'].includes(t.subject)){
                     deltaMinutes = t.done ? -t.duration : t.duration;
                 }
@@ -615,11 +609,11 @@
         }
     };
 
-    // 24hグラフ描画・バーンダウン
-    function update24hChartAndStats(summary) {
+    // ★UPGRADE★ 24h時計盤グラフレンダリング（時系列・時間帯表示）
+    function update24hChartAndStats(tasks) {
         let totalStudyPlanned = 0, totalStudyCompleted = 0;
         
-        currentDayTasks.forEach(t => {
+        tasks.forEach(t => {
             if(['math','physics','chem','eng'].includes(t.subject)){
                 totalStudyPlanned += t.duration;
                 if(t.done) totalStudyCompleted += t.duration;
@@ -633,21 +627,25 @@
         document.getElementById('progressPercentage').innerText = `${progressPercent}%`;
         document.getElementById('progressBar').style.width = `${progressPercent}%`;
 
-        // グラフ描画アロケーションのデータ詰め込み
         const labels = [], dataValues = [], backgroundColors = [];
 
-        // 24時間の全ての状態をループ処理してグラフ色決定
-        Object.keys(summary).forEach(key => {
-            if(key.startsWith('done_')) {
-                const pureKey = key.replace('done_', '');
-                labels.push(`[消化済] ${subjectMeta[pureKey].name} (${(summary[key]/60).toFixed(1)}h)`);
-                dataValues.push(summary[key]);
-                backgroundColors.push('#e2e8f0'); // 消化済みセクターは薄いグレーに染まる[cite: 1]
+        // 一日のスケジュール順のまま円グラフに1枠ずつ流し込んで「時計盤」を完全再現
+        tasks.forEach(t => {
+            const meta = subjectMeta[t.subject];
+            const endTime = calculateEndTime(t.time, t.duration);
+            
+            // グラフの横（凡例）のテキストに時間表記を組み込む
+            let label = `${t.time}〜${endTime} `;
+            if (t.done) {
+                label += `[✓] ${meta.name}`;
+                backgroundColors.push('#e2e8f0'); // 完了した枠はグレーに染まる[cite: 1]
             } else {
-                labels.push(`${subjectMeta[key].name} (${(summary[key]/60).toFixed(1)}h)`);
-                dataValues.push(summary[key]);
-                backgroundColors.push(subjectMeta[key].color);
+                label += meta.name;
+                backgroundColors.push(meta.color);
             }
+            
+            labels.push(label);
+            dataValues.push(t.duration);
         });
 
         if (dataValues.length === 0) {
@@ -659,7 +657,6 @@
         burndownChart.data.datasets[0].backgroundColor = backgroundColors;
         burndownChart.update();
 
-        // パドック送信
         if (currentUser && macroPlanData.title) {
             setDoc(doc(db, "publicStatus", currentUser.uid), {
                 name: auth.currentUser.displayName || "ひろ",
@@ -671,38 +668,36 @@
         }
     }
 
-    // ガレージで調節した時間配分を、その日のタイムラインにバッと流し込む
     window.apply24hTemplate = async (type) => {
-        if (!confirm('この日の24時間スケジュール枠を再展開してよろしいですか？（既存データは上書きされます）')) return;
+        if (!confirm('24時間スケジュール枠を再展開しますか？')) return;
         const config = macroPlanData.templates[type];
         
         if (type === 'phase1') {
             currentDayTasks = [
-                { id: 1, time: '23:00', duration: config.sleep, subject: 'sleep', task: 'マシンの完全冷却・睡眠（翌6:00まで）', done: false },
-                { id: 2, time: '06:30', duration: config.info, subject: 'info', task: '朝のウォームアップ：情報の基礎用語 or 公共の暗記', done: false },
-                { id: 3, time: '07:00', duration: config.life, subject: 'life', task: '朝のピット作業（朝食・身支度） ＆ バス通学（内職ペーパー）', done: false },
-                { id: 4, time: '08:30', duration: config.school, subject: 'school', task: '学校拘束時間（授業・ステルス内職・放課後移動）', done: false },
-                { id: 5, time: '17:30', duration: config.math, subject: 'math', task: '数III（極限）1.5h ＋ 弱点補修（ベクトル）0.5h', done: false },
-                { id: 6, time: '19:30', duration: 40, subject: 'life', task: 'ピットイン（夕食・風呂）', done: false }, 
-                { id: 7, time: '20:10', duration: config.physics, subject: 'physics', task: 'Geminiセッション ＋ セミナー力学（等加速度〜運動方程式）', done: false },
-                { id: 8, time: '21:40', duration: config.chem, subject: 'chem', task: 'エクセル理論化学（物質量・濃度など）', done: false }
+                { id: 1, time: '06:30', duration: config.info, subject: 'info', task: '朝のウォームアップ：情報の基礎用語 or 公共の暗記', done: false },
+                { id: 2, time: '07:00', duration: config.life, subject: 'life', task: '朝のピット作業（朝食・身支度） ＆ バス通学（内職ペーパー）', done: false },
+                { id: 3, time: '08:30', duration: config.school, subject: 'school', task: '学校拘束時間（授業・ステルス内職・放課後移動）', done: false },
+                { id: 4, time: '17:30', duration: config.math, subject: 'math', task: '数III（極限）1.5h ＋ 弱点補修（ベクトル）0.5h', done: false },
+                { id: 5, time: '19:30', duration: 40, subject: 'life', task: 'ピットイン（夕食・風呂）', done: false }, 
+                { id: 6, time: '20:10', duration: config.physics, subject: 'physics', task: 'Geminiセッション ＋ セミナー力学（等加速度〜運動方程式）', done: false },
+                { id: 7, time: '21:40', duration: config.chem, subject: 'chem', task: 'エクセル理論化学（物質量・濃度など）', done: false },
+                { id: 8, time: '23:00', duration: config.sleep, subject: 'sleep', task: 'マシンの完全冷却・睡眠（翌6:00まで）', done: false }
             ];
         } else {
             currentDayTasks = [
-                { id: 1, time: '23:00', duration: config.sleep, subject: 'sleep', task: 'マシンの完全冷却・睡眠（翌6:00まで）', done: false },
-                { id: 2, time: '06:30', duration: config.eng, subject: 'eng', task: '第1スティント：英語長文読解1題 ＋ シャドーイング', done: false },
-                { id: 3, time: '07:30', duration: config.life, subject: 'life', task: '朝のピットイン（食事・洗顔等含む）', done: false },
-                { id: 4, time: '09:00', duration: config.math, subject: 'math', task: '第2スティント：数III（微積分）2h ＋ 弱点補修1h', done: false },
-                { id: 5, time: '12:00', duration: 60, subject: 'info', task: 'ロングピットイン（昼食・完全リラックス）', done: false },
-                { id: 6, time: '13:00', duration: config.physics, subject: 'physics', task: '第3スティント：Geminiセッション ＋ セミナー基本問題', done: false },
-                { id: 7, time: '16:00', duration: 30, subject: 'info', task: 'ショートピットイン（ストレッチ・水分補給）', done: false },
-                { id: 8, time: '16:30', duration: config.chem, subject: 'chem', task: '第4スティント：エクセル理論化学完結 〜 有機へ突入', done: false },
-                { id: 9, time: '19:30', duration: 90, subject: 'life', task: 'ディナー＆リフレッシュメンテ（夕食・風呂）', done: false },
-                { id: 10, time: '21:00', duration: config.info, subject: 'info', task: '最終スティント：エラー記録アプリ再現テスト1h ＋ 共テ暗記モノ1h', done: false }
+                { id: 1, time: '06:30', duration: config.eng, subject: 'eng', task: '第1スティント：英語長文読解1題 ＋ シャドーイング', done: false },
+                { id: 2, time: '07:30', duration: config.life, subject: 'life', task: '朝のピットイン（食事・洗顔等含む）', done: false },
+                { id: 3, time: '09:00', duration: config.math, subject: 'math', task: '第2スティント：数III（微積分）2h ＋ 弱点補修1h', done: false },
+                { id: 4, time: '12:00', duration: 60, subject: 'info', task: 'ロングピットイン（昼食・完全リラックス）', done: false },
+                { id: 5, time: '13:00', duration: config.physics, subject: 'physics', task: '第3スティント：Geminiセッション ＋ セミナー基本問題', done: false },
+                { id: 6, time: '16:00', duration: 30, subject: 'info', task: 'ショートピットイン（ストレッチ・水分補給）', done: false },
+                { id: 7, time: '16:30', duration: config.chem, subject: 'chem', task: '第4スティント：エクセル理論化学完結 〜 有機へ突入', done: false },
+                { id: 8, time: '19:30', duration: 90, subject: 'life', task: 'ディナー＆リフレッシュメンテ（夕食・風呂）', done: false },
+                { id: 9, time: '21:00', duration: config.info, subject: 'info', task: '最終スティント：エラー記録アプリ再現テスト1h ＋ 共テ暗記モノ1h', done: false },
+                { id: 10, time: '23:00', duration: config.sleep, subject: 'sleep', task: 'マシンの完全冷却・睡眠（翌6:00まで）', done: false }
             ];
         }
 
-        // 微調整（固定の分数データを帳尻合わせするために各配列のトータル分数のみconfigの値に上書き）
         renderTimeline();
         await setDoc(doc(db, `users/${currentUser.uid}/dailyPlans/${currentSelectedDate}`), { tasks: currentDayTasks });
     };
@@ -760,8 +755,17 @@
             type: 'doughnut',
             data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderWidth: 0, hoverOffset: 4 }] },
             options: {
-                responsive: true, maintainAspectRatio: false, cutout: '75%',
-                plugins: { legend: { position: 'right', labels: { font: { family: "'Noto Sans JP', sans-serif", size: 10, weight: 'bold' }, color: '#64748b', padding: 8 } } }
+                responsive: true, mainAspectRatio: false, cutout: '72%',
+                plugins: { 
+                    legend: { 
+                        position: 'right', 
+                        labels: { 
+                            font: { family: "'Noto Sans JP', sans-serif", size: 10, weight: 'bold' }, 
+                            color: '#475569', 
+                            padding: 10 
+                        } 
+                    } 
+                }
             }
         });
     }
