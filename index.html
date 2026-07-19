@@ -564,7 +564,11 @@
             return;
         }
 
-        currentDayTasks.sort((a, b) => a.time.localeCompare(b.time));
+       currentDayTasks.sort((a, b) => {
+    const [ah, am] = a.time.split(':').map(Number);
+    const [bh, bm] = b.time.split(':').map(Number);
+    return (ah * 60 + am) - (bh * 60 + bm);
+});
         
         currentDayTasks.forEach(task => {
             const meta = subjectMeta[task.subject];
@@ -630,7 +634,11 @@
         document.getElementById('progressPercentage').innerText = `${progressPercent}%`;
         document.getElementById('progressBar').style.width = `${progressPercent}%`;
 
-        const sortedTasks = [...tasks].sort((a, b) => a.time.localeCompare(b.time));
+       const sortedTasks = [...tasks].sort((a, b) => {
+    const [ah, am] = a.time.split(':').map(Number);
+    const [bh, bm] = b.time.split(':').map(Number);
+    return (ah * 60 + am) - (bh * 60 + bm);
+});
         const chartBlocks = [];
         let currentTimelineMinute = 0;
 
@@ -720,7 +728,11 @@
     };
 
     window.addTask = async () => {
-        const time = document.getElementById('inputTime').value.trim() || '00:00';
+      let time = document.getElementById('inputTime').value.trim() || '00:00';
+if (time.includes(':')) {
+    const [h, m] = time.split(':');
+    time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
         const duration = parseInt(document.getElementById('inputDuration').value) || 30;
         const subject = document.getElementById('inputSubject').value;
         const taskText = document.getElementById('inputTask').value.trim();
