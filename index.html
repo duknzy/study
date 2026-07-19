@@ -203,6 +203,16 @@
                     <div id="paddockContainer" class="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto"></div>
                 </section>
             </div>
+            <!-- MACRO TASK STRATEGY BOARD -->
+<section class="bg-white p-6 rounded-2xl border border-borderLight shadow-sm space-y-4 col-span-1 lg:col-span-3">
+    <div class="border-b pb-2 flex justify-between items-center">
+        <h3 class="text-md font-black text-textMain">🎯 夏休み科目別・分野別大計画（進捗ボード）</h3>
+        <span class="text-xs text-textSub">※ガレージ画面から自分で分野を登録・削除できます</span>
+    </div>
+    <div id="macroTaskCockpitList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- JavaScriptから科目ごとにグループ化されて自動生成 -->
+    </div>
+</section>
         </div>
 
         <!-- VIEW: GARAGE -->
@@ -285,6 +295,25 @@
                 <div id="garageMilestoneContainer" class="space-y-3 text-xs"></div>
             </div>
 
+            <!-- MACRO TASK MANAGER -->
+<div class="bg-white p-6 rounded-2xl border border-borderLight shadow-sm space-sm space-y-4">
+    <h3 class="text-sm font-bold text-textMain border-b pb-1">🛠️ 大計画・分野別目標の追加と管理</h3>
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs">
+        <select id="macroInSubject" class="p-2 rounded border bg-baseBg font-bold text-textMain">
+            <option value="math">📘 数学</option>
+            <option value="physics">📙 物理</option>
+            <option value="chem">📗 化学</option>
+            <option value="eng">🍇 英語</option>
+        </select>
+        <input type="text" id="macroInCategory" placeholder="種類・分野 (例: 数III積分)" class="p-2 rounded border bg-baseBg">
+        <input type="text" id="macroInGoal" placeholder="具体的なゴール (例: 記述例題全クリア)" class="p-2 rounded border bg-baseBg sm:col-span-2">
+    </div>
+    <button onclick="addMacroTask()" class="bg-textMain text-white font-bold py-2 px-4 rounded-lg text-xs hover:bg-slate-800 transition-colors">大計画リストに追加</button>
+    
+    <!-- 削除管理用リスト -->
+    <div id="macroTaskGarageList" class="space-y-1.5 pt-2 max-h-[200px] overflow-y-auto text-xs"></div>
+</div>
+
             <div class="flex justify-end">
                 <button id="btn-save-garage" onclick="saveGarageSettings()" class="px-8 py-3 bg-accentBlue text-white font-black rounded-xl text-sm shadow-sm hover:bg-blue-600 transition-colors">
                     🔧 24hチューニング内容をFirestoreに適用する
@@ -348,6 +377,10 @@
             { id: 1, date: "2026-07-31", title: "Checkpoint 1", content: "数学:数III微分突入/ベクトル完了 | 物理:力学全範囲基本完了 | 化学:理論完了(酸・塩基・酸化還元まで)", done: false },
             { id: 2, date: "2026-08-07", title: "Checkpoint 2", content: "数学:数III積分突入/軌跡・確率完了 | 物理:熱力学完了、電磁気へシフト | 化学:理論全範囲完了、有機へシフト", done: false },
             { id: 3, date: "2026-08-17", title: "Final Checkpoint", content: "数学:数III基本例題一巡/弱点一巡完了 | 物理:電磁気の電場・直流回路まで完了 | 化学:有機の基本完了", done: false }
+        ],
+        macroTasks: [
+            { id: 1, subject: 'math', category: '数III積分', goal: '重要例題を一巡クリア', done: false },
+            { id: 2, subject: 'physics', category: '力学', goal: '重要問題集 A問題完遂', done: false }
         ]
     };
 
@@ -433,6 +466,7 @@
                 </div>
             `;
         });
+        renderMacroTasks();
     }
 
     window.toggleMilestone = async (idx) => {
@@ -856,6 +890,88 @@ if (time.includes(':')) {
             }
         });
     }
+
+    // 1. コックピットとガレージへの描画処理（既存の renderMacroDOM 関数の最後に追記して呼び出すと確実だよ）
+function renderMacroTasks() {
+    if (!macroPlanData.macroTasks) macroPlanData.macroTasks = [];
+    
+    // コックピット側の描画（科目ごとにカードを分ける）
+    const studySubs = ['math', 'physics', 'chem', 'eng'];
+    let cockpitHTML = '';
+    
+    studySubs.forEach(sub => {
+        const meta = subjectMeta[sub];
+        const tasks = macroPlanData.macroTasks.filter(t => t.subject === sub);
+        
+        let taskListHTML = '';
+        if (tasks.length === 0) {
+            taskListHTML = `<p class="text-gray-400 italic text-[11px] py-1">未登録</p>`;
+        } else {
+            tasks.forEach(t => {
+                taskListHTML += `
+                    <label class="flex items-start gap-2 p-1.5 rounded hover:bg-white/50 cursor-pointer transition-colors">
+                        <input type="checkbox" ${t.done ? 'checked' : ''} onclick="toggleMacroTask(${t.id})" class="w-3.5 h-3.5 rounded text-accentBlue mt-0.5 shrink-0">
+                        <span class="${t.done ? 'line-through opacity-40' : ''} text-[11px] leading-tight">
+                            <strong class="text-textMain">[${t.category}]</strong> ${t.goal}
+                        </span>
+                    </label>
+                `;
+            });
+        }
+        
+        cockpitHTML += `
+            <div class="p-4 border rounded-2xl ${meta.bg} border-borderLight shadow-2xs space-y-2">
+                <span class="text-xs font-black tracking-wider block border-b pb-1 ${meta.text}">${meta.name}</span>
+                <div class="space-y-1">${taskListHTML}</div>
+            </div>
+        `;
+    });
+    document.getElementById('macroTaskCockpitList').innerHTML = cockpitHTML;
+
+    // ガレージ側の削除リスト描画
+    let garageHTML = '';
+    macroPlanData.macroTasks.forEach(t => {
+        const meta = subjectMeta[t.subject];
+        garageHTML += `
+            <div class="flex justify-between items-center p-2 border border-dashed rounded-lg bg-baseBg">
+                <span>[${meta.name}] <strong>${t.category}</strong>: ${t.goal}</span>
+                <button onclick="deleteMacroTask(${t.id})" class="text-red-400 hover:text-red-600 font-bold px-1">削除</button>
+            </div>
+        `;
+    });
+    document.getElementById('macroTaskGarageList').innerHTML = garageHTML || '<p class="text-textSub italic">登録されている大計画はありません。</p>';
+}
+
+// 2. コックピット側でのチェックボックスのON/OFF
+window.toggleMacroTask = async (id) => {
+    macroPlanData.macroTasks = macroPlanData.macroTasks.map(t => t.id === id ? { ...t, done: !t.done } : t);
+    renderMacroTasks();
+    await setDoc(doc(db, `users/${currentUser.uid}/macroPlan/current`), macroPlanData);
+};
+
+// 3. ガレージ側での新規追加
+window.addMacroTask = async () => {
+    const subject = document.getElementById('macroInSubject').value;
+    const category = document.getElementById('macroInCategory').value.trim();
+    const goal = document.getElementById('macroInGoal').value.trim();
+    
+    if (!category || !goal) return alert('分野と具体的なゴールを入力してください！');
+    
+    macroPlanData.macroTasks.push({ id: Date.now(), subject, category, goal, done: false });
+    document.getElementById('macroInCategory').value = '';
+    document.getElementById('macroInGoal').value = '';
+    
+    renderMacroTasks();
+    await setDoc(doc(db, `users/${currentUser.uid}/macroPlan/current`), macroPlanData);
+};
+
+// 4. ガレージ側での削除
+window.deleteMacroTask = async (id) => {
+    if (!confirm('この大目標を計画から削除しますか？')) return;
+    macroPlanData.macroTasks = macroPlanData.macroTasks.filter(t => t.id !== id);
+    renderMacroTasks();
+    await setDoc(doc(db, `users/${currentUser.uid}/macroPlan/current`), macroPlanData);
+};
 </script>
 
 </body>
