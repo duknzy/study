@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>長崎大学・24hフルアップデート計画 (True Clock Face)</title>
+    <title>24h固定文字盤テレメトリー (True Clock Face)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -44,7 +44,7 @@
     <div class="bg-white p-8 rounded-2xl border border-borderLight shadow-sm max-w-md w-full text-center space-y-6">
         <div>
             <h1 class="text-2xl font-black text-textMain tracking-tight">🏁 24h 固定文字盤テレメトリー v4.5.1</h1>
-            <p class="text-sm text-textSub mt-1">長崎大学 フルアップデート計画</p>
+          <p class="text-sm text-textSub mt-1">24時間目標達成・リソース管理システム</p>
         </div>
         <p class="text-xs text-textSub leading-relaxed">一日の全リソースを24時間時計の文字盤として完全同期・可視化します。</p>
         <button onclick="handleGoogleLogin()" class="w-full flex items-center justify-center gap-3 bg-white border border-borderLight text-textMain font-bold py-3 px-4 rounded-xl text-sm shadow-xs hover:bg-gray-50 transition-colors">
@@ -376,7 +376,7 @@
 
     window.handleProfileSubmit = async () => {
         const name = document.getElementById('setup-name').value.trim();
-        const target = document.getElementById('setup-target').value.trim() || "長崎大学 情報データ科学部";
+       const target = document.getElementById('setup-target').value.trim() || "未設定の目標";
         if (!name) return alert('ネームを入力してください。');
 
         await setDoc(doc(db, "users", currentUser.uid), { name, target });
