@@ -295,6 +295,28 @@
                 <div id="garageMilestoneContainer" class="space-y-3 text-xs"></div>
             </div>
 
+            <!-- 大計画からマイルストーンを生成するフォーム -->
+                <div class="border-t pt-4 mt-4 space-y-3">
+                    <span class="text-xs font-bold text-textMain block">⚡ 大計画リストからマイルストーンを生成</span>
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs">
+                        <!-- 科目選択 -->
+                        <select id="msInSubject" onchange="updateMilestoneTaskOptions()" class="p-2 rounded border bg-baseBg font-bold text-textMain">
+                            <option value="math">📘 数学</option>
+                            <option value="physics">📙 物理</option>
+                            <option value="chem">📗 化学</option>
+                            <option value="eng">🍇 英語</option>
+                        </select>
+                        <!-- 大計画タスク選択（JavaScriptから動的生成） -->
+                        <select id="msInTask" class="p-2 rounded border bg-baseBg text-textMain sm:col-span-3">
+                            <option value="">選択された科目の大計画がここに連動します</option>
+                        </select>
+                        <!-- 日付とタイトルの入力 -->
+                        <input type="date" id="msInDate" class="p-2 rounded border bg-baseBg">
+                        <input type="text" id="msInTitle" placeholder="タイトル (例: Checkpoint 1)" class="p-2 rounded border bg-baseBg sm:col-span-2">
+                        <button onclick="addMilestoneFromMacro()" class="bg-accentBlue text-white font-bold py-2 px-4 rounded-lg text-xs hover:bg-blue-600 transition-colors">チェックポイントを追加</button>
+                    </div>
+                </div>
+
             <!-- MACRO TASK MANAGER -->
 <div class="bg-white p-6 rounded-2xl border border-borderLight shadow-sm space-sm space-y-4">
     <h3 class="text-sm font-bold text-textMain border-b pb-1">🛠️ 大計画・分野別目標の追加と管理</h3>
@@ -516,6 +538,7 @@
             `;
         });
         validate24h();
+        updateMilestoneTaskOptions();
     }
 
     window.validate24h = () => {
@@ -970,6 +993,64 @@ window.deleteMacroTask = async (id) => {
     if (!confirm('この大目標を計画から削除しますか？')) return;
     macroPlanData.macroTasks = macroPlanData.macroTasks.filter(t => t.id !== id);
     renderMacroTasks();
+    await setDoc(doc(db, `users/${currentUser.uid}/macroPlan/current`), macroPlanData);
+};
+
+// 1. 科目セレクトが変わったときに、対応する大計画だけを2つ目のセレクトボックスに展開する関数
+window.updateMilestoneTaskOptions = () => {
+    const selectedSub = document.getElementById('msInSubject').value;
+    const taskSelect = document.getElementById('msInTask');
+    taskSelect.innerHTML = '';
+
+    if (!macroPlanData.macroTasks) macroPlanData.macroTasks = [];
+    
+    // 選択された科目の大計画だけをフィルタリング
+    const filteredTasks = macroPlanData.macroTasks.filter(t => t.subject === selectedSub);
+
+    if (filteredTasks.length === 0) {
+        taskSelect.innerHTML = '<option value="">この科目の大計画はまだ登録されていません</option>';
+        return;
+    }
+
+    filteredTasks.forEach(t => {
+        // オプションの値に大計画の情報を詰め込む
+        taskSelect.innerHTML += `<option value="${t.id}">[${t.category}] ${t.goal}</option>`;
+    });
+};
+
+// 2. 選択された大計画のテキストを引っ張ってきて、マイルストーンに変換して追加する関数
+window.addMilestoneFromMacro = async () => {
+    const taskId = document.getElementById('msInTask').value;
+    const date = document.getElementById('msInDate').value;
+    const title = document.getElementById('msInTitle').value.trim();
+
+    if (!taskId || !date || !title) return alert('大計画、日付、タイトルをすべて入力してください！');
+
+    // 選択された大計画オブジェクトを探し出す
+    const targetTask = macroPlanData.macroTasks.find(t => t.id == taskId);
+    if (!targetTask) return;
+
+    const meta = subjectMeta[targetTask.subject];
+    // マイルストーンの表記用にテキストをフォーマット
+    const contentText = `${meta.name}: ${targetTask.category} ➔ ${targetTask.goal}`;
+
+    if (!macroPlanData.milestones) macroPlanData.milestones = [];
+
+    // 新しいマイルストーンを配列にプッシュ
+    macroPlanData.milestones.push({
+        id: Date.now(),
+        date: date,
+        title: title,
+        content: contentText,
+        done: false
+    });
+
+    // フォームをリセット
+    document.getElementById('msInTitle').value = '';
+    document.getElementById('msInDate').value = '';
+
+    // ガレージ内のマイルストーン一覧の表示を更新してFirestoreに保存
+    syncGarageForm(); 
     await setDoc(doc(db, `users/${currentUser.uid}/macroPlan/current`), macroPlanData);
 };
 </script>
