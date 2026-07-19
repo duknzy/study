@@ -512,16 +512,13 @@
         const mContainer = document.getElementById('cockpitMilestoneList');
         mContainer.innerHTML = '';
         (macroPlanData.milestones || []).forEach((m, idx) => {
-            mEditor.innerHTML += `
-                <div class="p-2 border rounded-xl bg-baseBg space-y-1.5">
-                    <div class="flex justify-between items-center gap-2">
-                        <div class="flex gap-2 w-4/5">
-                            <input type="text" id="g-m-title-${idx}" value="${m.title}" class="font-bold p-1 border rounded w-1/2">
-                            <input type="date" id="g-m-date-${idx}" value="${m.date}" class="p-1 border rounded w-1/2">
-                        </div>
-                        <button onclick="removeMilestoneFromList(${idx})" class="text-xs text-red-500 hover:text-red-700 font-bold shrink-0">削除</button>
+            mContainer.innerHTML += `
+                <div class="flex items-center justify-between p-2 border rounded-xl text-xs bg-baseBg">
+                    <div class="${m.done ? 'line-through opacity-40' : ''} flex-grow pr-2">
+                        <span class="font-bold text-textMain block">${m.title} (${m.date.split('-')[1]}/${m.date.split('-')[2]})</span>
+                        <span class="text-[11px] text-textSub block">${m.content}</span>
                     </div>
-                    <input type="text" id="g-m-content-${idx}" value="${m.content}" class="w-full p-1 border rounded">
+                    <input type="checkbox" ${m.done ? 'checked' : ''} onclick="toggleMilestone(${idx})" class="w-4 h-4 rounded text-accentBlue cursor-pointer">
                 </div>
             `;
         });
@@ -566,9 +563,12 @@
         (macroPlanData.milestones || []).forEach((m, idx) => {
             mEditor.innerHTML += `
                 <div class="p-2 border rounded-xl bg-baseBg space-y-1.5">
-                    <div class="flex gap-2">
-                        <input type="text" id="g-m-title-${idx}" value="${m.title}" class="font-bold p-1 border rounded w-1/3">
-                        <input type="date" id="g-m-date-${idx}" value="${m.date}" class="p-1 border rounded w-1/3">
+                    <div class="flex justify-between items-center gap-2">
+                        <div class="flex gap-2 w-4/5">
+                            <input type="text" id="g-m-title-${idx}" value="${m.title}" class="font-bold p-1 border rounded w-1/2">
+                            <input type="date" id="g-m-date-${idx}" value="${m.date}" class="p-1 border rounded w-1/2">
+                        </div>
+                        <button onclick="removeMilestoneFromList(${idx})" class="text-xs text-red-500 hover:text-red-700 font-bold shrink-0">削除</button>
                     </div>
                     <input type="text" id="g-m-content-${idx}" value="${m.content}" class="w-full p-1 border rounded">
                 </div>
@@ -577,7 +577,6 @@
         validate24h();
         updateMilestoneTaskOptions();
     }
-
     window.validate24h = () => {
         let isValid = true;
         ['phase1', 'phase2'].forEach(pId => {
