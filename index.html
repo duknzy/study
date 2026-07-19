@@ -416,11 +416,7 @@
             phase1: { sleep: 420, life: 90, school: 600, math: 120, physics: 90, chem: 90, eng: 0, info: 30 }, // 睡眠420分[cite: 2], 生活90分
             phase2: { sleep: 420, life: 90, school: 0, math: 180, physics: 180, chem: 180, eng: 60, info: 210 } // 睡眠420分[cite: 2], 生活90分, 勉強12h[cite: 2]
         },
-        milestones: [
-            { id: 1, date: "2026-07-31", title: "Checkpoint 1", content: "数学:数III微分突入/ベクトル完了 | 物理:力学全範囲基本完了 | 化学:理論完了(酸・塩基・酸化還元まで)", done: false },
-            { id: 2, date: "2026-08-07", title: "Checkpoint 2", content: "数学:数III積分突入/軌跡・確率完了 | 物理:熱力学完了、電磁気へシフト | 化学:理論全範囲完了、有機へシフト", done: false },
-            { id: 3, date: "2026-08-17", title: "Final Checkpoint", content: "数学:数III基本例題一巡/弱点一巡完了 | 物理:電磁気の電場・直流回路まで完了 | 化学:有機の基本完了", done: false }
-        ],
+        milestones: [],
         macroTasks: [
             { id: 1, subject: 'math', category: '数III積分', goal: '重要例題を一巡クリア', done: false },
             { id: 2, subject: 'physics', category: '力学', goal: '重要問題集 A問題完遂', done: false }
@@ -516,13 +512,16 @@
         const mContainer = document.getElementById('cockpitMilestoneList');
         mContainer.innerHTML = '';
         (macroPlanData.milestones || []).forEach((m, idx) => {
-            mContainer.innerHTML += `
-                <div class="flex items-center justify-between p-2 border rounded-xl text-xs bg-baseBg">
-                    <div class="${m.done ? 'line-through opacity-40' : ''} flex-grow pr-2">
-                        <span class="font-bold text-textMain block">${m.title} (${m.date.split('-')[1]}/${m.date.split('-')[2]})</span>
-                        <span class="text-[11px] text-textSub block">${m.content}</span>
+            mEditor.innerHTML += `
+                <div class="p-2 border rounded-xl bg-baseBg space-y-1.5">
+                    <div class="flex justify-between items-center gap-2">
+                        <div class="flex gap-2 w-4/5">
+                            <input type="text" id="g-m-title-${idx}" value="${m.title}" class="font-bold p-1 border rounded w-1/2">
+                            <input type="date" id="g-m-date-${idx}" value="${m.date}" class="p-1 border rounded w-1/2">
+                        </div>
+                        <button onclick="removeMilestoneFromList(${idx})" class="text-xs text-red-500 hover:text-red-700 font-bold shrink-0">削除</button>
                     </div>
-                    <input type="checkbox" ${m.done ? 'checked' : ''} onclick="toggleMilestone(${idx})" class="w-4 h-4 rounded text-accentBlue cursor-pointer">
+                    <input type="text" id="g-m-content-${idx}" value="${m.content}" class="w-full p-1 border rounded">
                 </div>
             `;
         });
@@ -1090,6 +1089,29 @@ window.addMilestoneFromMacro = async () => {
     // ガレージ内のマイルストーン一覧の表示を更新してFirestoreに保存
     syncGarageForm(); 
     await setDoc(doc(db, `users/${currentUser.uid}/macroPlan/current`), macroPlanData);
+};
+
+// ガレージ画面で指定したマイルストーンをリストから除外する関数
+window.removeMilestoneFromList = (idx) => {
+    if (!confirm('このマイルストーンを削除しますか？\n（まだ下の「適用ボタン」を押していない場合、他の入力中の内容も一度画面に同期されます）')) return;
+    
+    // 削除する前に、現在画面に入力されている他のマイルストーンのテキストをデータに一度バックアップ
+    (macroPlanData.milestones || []).forEach((m, i) => {
+        const titleEl = document.getElementById(`g-m-title-${i}`);
+        const dateEl = document.getElementById(`g-m-date-${i}`);
+        const contentEl = document.getElementById(`g-m-content-${i}`);
+        if (titleEl && dateEl && contentEl) {
+            m.title = titleEl.value.trim();
+            m.date = dateEl.value;
+            m.content = contentEl.value.trim();
+        }
+    });
+    
+    // 指定されたインデックスの要素を配列から1つ削除
+    macroPlanData.milestones.splice(idx, 1);
+    
+    // 削除後の状態でガレージ画面のマイルストーンエリアを再描画
+    syncGarageForm();
 };
 </script>
 
