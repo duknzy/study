@@ -77,6 +77,27 @@
                 <label class="block text-xs font-bold text-textSub uppercase mb-1">目標志望校</label>
                 <input type="text" id="setup-target" class="w-full px-3 py-2 text-sm rounded-lg border border-borderLight bg-baseBg">
             </div>
+            <div class="border-t pt-4 space-y-3">
+                <span class="text-xs font-bold text-textMain block text-left">🎯 この夏、各科目で絶対に攻略したい分野・目標</span>
+                <div class="space-y-2.5 text-xs text-left">
+                    <div>
+                        <label class="font-bold text-blue-600 block mb-0.5">📘 数学の目標</label>
+                        <input type="text" id="setup-math-goal" placeholder="例: 数III積分（重要例題一巡クリア）" class="w-full p-2 border rounded-lg bg-baseBg">
+                    </div>
+                    <div>
+                        <label class="font-bold text-orange-600 block mb-0.5">📙 物理の目標</label>
+                        <input type="text" id="setup-physics-goal" placeholder="例: 力学（重要問題集A問題完遂）" class="w-full p-2 border rounded-lg bg-baseBg">
+                    </div>
+                    <div>
+                        <label class="font-bold text-green-600 block mb-0.5">📗 化学の目標</label>
+                        <input type="text" id="setup-chem-goal" placeholder="例: 理論化学（エクセル基本完結）" class="w-full p-2 border rounded-lg bg-baseBg">
+                    </div>
+                    <div>
+                        <label class="font-bold text-purple-600 block mb-0.5">🍇 英語の目標</label>
+                        <input type="text" id="setup-eng-goal" placeholder="例: 長文読解（毎日1題精読ルール）" class="w-full p-2 border rounded-lg bg-baseBg">
+                    </div>
+                </div>
+            </div>
             <button onclick="handleProfileSubmit()" class="w-full bg-accentBlue text-white font-bold py-2.5 rounded-xl text-sm hover:bg-blue-600 transition-colors">
                 24hコックピットを起動
             </button>
@@ -431,11 +452,28 @@
 
     window.handleProfileSubmit = async () => {
         const name = document.getElementById('setup-name').value.trim();
-       const target = document.getElementById('setup-target').value.trim() || "未設定の目標";
+        const target = document.getElementById('setup-target').value.trim() || "未設定の目標";
         if (!name) return alert('ネームを入力してください。');
 
+        // 初回入力された各科目の目標を取得
+        const mathGoal = document.getElementById('setup-math-goal').value.trim();
+        const physicsGoal = document.getElementById('setup-physics-goal').value.trim();
+        const chemGoal = document.getElementById('setup-chem-goal').value.trim();
+        const engGoal = document.getElementById('setup-eng-goal').value.trim();
+
+        // デフォルトの計画構造をクローンしてベースを作成
+        const initialPlan = JSON.parse(JSON.stringify(defaultMacroPlan));
+        initialPlan.macroTasks = []; // サンプルのタスクを一度リセット
+
+        // 入力があった科目だけ、初期の大計画リストにプッシュ
+        if (mathGoal) initialPlan.macroTasks.push({ id: Date.now(), subject: 'math', category: '夏目標', goal: mathGoal, done: false });
+        if (physicsGoal) initialPlan.macroTasks.push({ id: Date.now() + 1, subject: 'physics', category: '夏目標', goal: physicsGoal, done: false });
+        if (chemGoal) initialPlan.macroTasks.push({ id: Date.now() + 2, subject: 'chem', category: '夏目標', goal: chemGoal, done: false });
+        if (engGoal) initialPlan.macroTasks.push({ id: Date.now() + 3, subject: 'eng', category: '夏目標', goal: engGoal, done: false });
+
+        // ユーザープロフィールとカスタムされた初期計画をFirestoreに保存
         await setDoc(doc(db, "users", currentUser.uid), { name, target });
-        await setDoc(doc(db, `users/${currentUser.uid}/macroPlan/current`), JSON.parse(JSON.stringify(defaultMacroPlan)));
+        await setDoc(doc(db, `users/${currentUser.uid}/macroPlan/current`), initialPlan);
         
         document.getElementById('profile-setup-screen').classList.add('hidden-screen');
         await loadMacroPlan();
