@@ -202,6 +202,9 @@
                                 <option value="physics">📙 物理</option>
                                 <option value="chem">📗 化学</option>
                                 <option value="eng">🍇 英語</option>
+                                <option value="kobun">🪶 古文</option>
+                                <option value="jp">📖 現代文</option>
+                                <option value="soc">🌏 地歴・公民</option>
                                 <option value="info">☕ その他・自由時間</option>
                             </select>
                             <input type="text" id="inputTask" placeholder="具体的な中身" class="p-2 rounded border bg-white col-span-2">
@@ -326,6 +329,9 @@
                             <option value="physics">📙 物理</option>
                             <option value="chem">📗 化学</option>
                             <option value="eng">🍇 英語</option>
+                            <option value="kobun">🪶 古文</option>
+                            <option value="jp">📖 現代文</option>
+                            <option value="soc">🌏 地歴・公民</option>
                         </select>
                         <!-- 大計画タスク選択（JavaScriptから動的生成） -->
                         <select id="msInTask" class="p-2 rounded border bg-baseBg text-textMain sm:col-span-3">
@@ -347,6 +353,9 @@
             <option value="physics">📙 物理</option>
             <option value="chem">📗 化学</option>
             <option value="eng">🍇 英語</option>
+            <option value="kobun">🪶 古文</option>
+            <option value="jp">📖 現代文</option>
+            <option value="soc">🌏 地歴・公民</option>
         </select>
         <input type="text" id="macroInCategory" placeholder="種類・分野 (例: 数III積分)" class="p-2 rounded border bg-baseBg">
         <input type="text" id="macroInGoal" placeholder="具体的なゴール (例: 記述例題全クリア)" class="p-2 rounded border bg-baseBg sm:col-span-2">
@@ -403,8 +412,15 @@
         physics: { name: '物理', color: '#f97316', bg: 'bg-orange-50', text: 'text-accentOrange' },
         chem: { name: '化学', color: '#22c55e', bg: 'bg-green-50', text: 'text-green-600' },
         eng: { name: '英語', color: '#a855f7', bg: 'bg-purple-50', text: 'text-purple-600' },
-        info: { name: '自由枠・その他', color: '#edeaf2', bg: 'bg-rose-50', text: 'text-rose-500' }
+        // 👇 ここから新科目（古文・現代文・地歴公民）を追加
+        kobun: { name: '古文', color: '#e11d48', bg: 'bg-rose-50', text: 'text-rose-600' },
+        jp: { name: '現代文', color: '#db2777', bg: 'bg-pink-50', text: 'text-pink-600' },
+        soc: { name: '地歴・公民', color: '#eab308', bg: 'bg-amber-50', text: 'text-amber-600' },
+        info: { name: '自由枠・その他', color: '#edeaf2', bg: 'bg-slate-50', text: 'text-slate-500' }
     };
+
+    // ★勉強時間として集計対象にする科目のキー一覧（これを1箇所定義しておけば判定が共通化されます）
+    const studySubjectKeys = ['math', 'physics', 'chem', 'eng', 'kobun', 'jp', 'soc'];
 
     const defaultMacroPlan = {
         title: "夏季フルアップデート計画",
@@ -692,7 +708,7 @@
         let deltaMinutes = 0;
         currentDayTasks = currentDayTasks.map(t => {
             if (t.id === id) {
-                if(['math','physics','chem','eng'].includes(t.subject)){
+                if (studySubjectKeys.includes(t.subject)) {
                     deltaMinutes = t.done ? -t.duration : t.duration;
                 }
                 return { ...t, done: !t.done };
@@ -714,7 +730,7 @@
         let totalStudyPlanned = 0, totalStudyCompleted = 0;
         
         tasks.forEach(t => {
-            if(['math','physics','chem','eng'].includes(t.subject)){
+            if (studySubjectKeys.includes(t.subject)) {
                 totalStudyPlanned += t.duration;
                 if(t.done) totalStudyCompleted += t.duration;
             }
@@ -838,7 +854,7 @@ if (time.includes(':')) {
     window.deleteTask = async (id) => {
         if (!confirm('削除しますか？')) return;
         const target = currentDayTasks.find(t => t.id === id);
-        if (target && target.done && ['math','physics','chem','eng'].includes(target.subject)) {
+       if (target && target.done && studySubjectKeys.includes(target.subject)) {
             macroPlanData.completedHours = Math.max(0, parseFloat(macroPlanData.completedHours || 0) - (target.duration / 60));
             await setDoc(doc(db, `users/${currentUser.uid}/macroPlan/current`), macroPlanData);
             renderMacroDOM();
@@ -955,7 +971,7 @@ function renderMacroTasks() {
     if (!macroPlanData.macroTasks) macroPlanData.macroTasks = [];
     
     // コックピット側の描画（科目ごとにカードを分ける）
-    const studySubs = ['math', 'physics', 'chem', 'eng'];
+    const studySubs = studySubjectKeys;
     let cockpitHTML = '';
     
     studySubs.forEach(sub => {
